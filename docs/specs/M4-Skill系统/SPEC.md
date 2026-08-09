@@ -78,6 +78,7 @@ class SkillRegistry:
 | G4 | **预置模板**：三个预置 Skill 可加载、可校验通过、可复制为项目级 | 冒烟 |
 | G5 | **项目隔离**：A 项目的 Skill 不出现在 B 项目的 render 结果中 | 用例 |
 | G6 | **即改即生效**：经 M6 API 修改正文 → reload → render 输出为新内容 | 用例 |
+| G7 | 日志（架构 §3.4）：Skill 加载/校验失败/热切换记 INFO，带 skill 名称与 project_id | 日志断言 |
 
 ---
 

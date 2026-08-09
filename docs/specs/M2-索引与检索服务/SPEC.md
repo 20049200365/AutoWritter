@@ -118,6 +118,7 @@ rewrite:   enabled=true, max_rounds=1, bm25_floor=（触发阈值，联调定值
 | C8 | **性能**：1000 章 / 10000 块规模，单次检索 < 200ms | 基准脚本 |
 | C9 | **契约测试**：SearchService 按 M3 §6.2 契约被调用，入参过滤（source_types/chapter_range）生效 | 契约用例 |
 | C10 | **无向量**：依赖清单静态检查，不含任何向量库/embedding 包 | import 检查 |
+| C11 | 日志（架构 §3.4）：检索两路命中明细记 DEBUG、融合结果与改写触发记 INFO，均带 project_id | 日志断言 |
 
 ---
 

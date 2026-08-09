@@ -76,6 +76,7 @@ class PreferenceService:
 | H5 | **硬约束升级**：同标签连续 3 次驳回 → hard_constraints 出现该条 | 用例 |
 | H6 | **注入联动**：get_profile 返回的 rubric_weights 出现在评审 prompt；画像段落出现在装配 P0 账本（联动 M3 B12） | 用例 |
 | H7 | **离线可测**：全套用例 FakeDistiller 通过，零 API 依赖 | CI 即证明 |
+| H8 | 日志（架构 §3.4）：事件记录/蒸馏触发/手动修正/回滚记 INFO 带 project_id；驳回反馈可记（产品数据），画像内容不全文入日志 | 日志断言 |
 
 ---
 

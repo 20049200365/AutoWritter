@@ -327,6 +327,7 @@ class PreferenceRepo:
 | A11 | 性能基线：1000 章 + 10000 chunks 的库上，章节列表与 project_stats 查询 < 100ms | 基准脚本目视报告 |
 | A12 | 内容全可写：不存在任何无 update 入口的文本字段（AI 产物字段 summary/context_snapshot/review 均有对应写入口） | 接口清单核查 |
 | A13 | 实体图：人物↔世界观词条、词条↔词条的跨类型边均可创建并查回；写入指向不存在实体的边被拒绝；`neighbors` 2 跳查询返回正确子图 | 用例全绿 |
+| A14 | 日志（架构 §3.4）：CRUD 写操作与事件派发产生带关联 ID 的 INFO 日志；正文内容仅以长度+首字符摘要入日志（text_digest），日志中不出现 API key | 用例 + 日志断言 |
 
 ---
 

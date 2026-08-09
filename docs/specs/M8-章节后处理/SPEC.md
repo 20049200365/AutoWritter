@@ -94,6 +94,7 @@ M2 `rebuild(project_id)` 需要刷新 chunk_entities 时，调 M8 的实体抽�
 | F9 | **幂等**：同一流水线连跑两次，建议无重复、事实表无重复行 | 用例 |
 | F10 | **性能**：FakeDistiller 下单章全流程 < 10s（真模型耗时不计入 CI） | 基准 |
 | F11 | **真链路冒烟（真模型，手动触发）**：真蒸馏模型对样本章跑全流程，人工审三样——摘要质量、提议合理性（依据引用是否真的支撑结论）、误报率；结果记入冒烟报告 | 里程碑/发版前各一次 |
+| F12 | 日志（架构 §3.4）：队列每步入队/开始/完成/失败记 INFO/ERROR，带 chapter_id 与 step；建议产出记 INFO；正文仅 text_digest 入日志 | 日志断言 |
 
 > API key 处理：真链路层的 key 由用户提供，存放于项目根目录 `.env`（已被 .gitignore 覆盖；变量名 DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL / 三角色 LLM_*_MODEL），**永不进代码、不进提交、不进任何文档与记忆**。
 
