@@ -135,8 +135,12 @@ def test_suggestion_api_flow(client):
 # ---------- 占位端点：501 ----------
 
 def test_stubs_return_501(client):
-    r = client.get("/preferences/1")                 # M5 未落地，仍为占位端点
+    r = client.post("/sessions/1/chat", json={"text": "你好"})   # M3 对话未落地，仍为占位
     assert r.status_code == 501 and r.json()["code"] == "not_implemented"
+
+
+def test_preferences_404_for_missing_project(client):
+    assert client.get("/preferences/9999").status_code == 404
 
 
 # ---------- D6 薄层：路由代码不得直连 ORM（静态检查）----------

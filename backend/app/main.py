@@ -6,11 +6,14 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from .api import chapters, entities, outline, projects, search, sessions, skills, stubs, system, tasks
+from .api import (chapters, entities, outline, preferences, projects, search,
+                  sessions, skills, stubs, system, tasks)
 from .api.deps import register_error_handlers, register_request_logging
 from .config import REPO_ROOT, Settings
 from .agent.postprocess import PostProcessor
+from .agent.preference import PreferenceService
 from .agent.provider import ProviderLayer
+from .agent.skills import SkillRegistry
 from .data.db import make_engine, make_session_factory
 from .data.events import CHAPTER_ACCEPTED, bus
 from .logging_utils import setup_logging
@@ -45,6 +48,14 @@ def create_app() -> FastAPI:
     app.state.settings = settings
     app.state.provider = ProviderLayer(settings)  # 测试可替换为 FakeProvider（B10）
 
+    # M4 Skill：预置模板落盘 + 加载；M5 偏好服务
+    registry = SkillRegistry(app.state.session_factory, settings.skills_dir)
+    registry.bootstrap_presets()
+    registry.load_all()
+    app.state.skill_registry = registry
+    app.state.preference_service = PreferenceService(app.state.session_factory,
+                                                     app.state.provider)
+
     register_index_subscribers(bus, app.state.session_factory)
 
     def _on_chapter_accepted(payload: dict) -> None:  # M8 后处理入口（架构 §5.4）
@@ -58,7 +69,8 @@ def create_app() -> FastAPI:
     register_error_handlers(app)
     register_request_logging(app)
 
-    for mod in (system, projects, outline, chapters, entities, skills, sessions, search, tasks, stubs):
+    for mod in (system, projects, outline, chapters, entities, skills, sessions,
+                search, tasks, preferences, stubs):
         app.include_router(mod.router)
 
     # 静态托管：前端 dist/ 存在时挂载（M7 交付后启用，D8）

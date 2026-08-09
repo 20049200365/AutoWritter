@@ -27,10 +27,13 @@ def sse_event(name: str, data: dict) -> dict:
 
 
 class ChapterPipeline:
-    def __init__(self, session_factory, provider, settings) -> None:
+    def __init__(self, session_factory, provider, settings,
+                 skill_registry=None, preference_service=None) -> None:
         self.factory = session_factory
         self.provider = provider
         self.settings = settings
+        self.skill_registry = skill_registry        # M4（注入 P0）
+        self.preference_service = preference_service  # M5（注入 P0 + 事件记录）
 
     # ---------- 阶段 A：装配 + 细纲 ----------
 
@@ -64,7 +67,13 @@ class ChapterPipeline:
             ch = uow.session.get(Chapter, task.chapter_id)
 
             yield sse_event("progress", {"task_id": task_id, "stage": "装配"})
-            assembled = Assembler(uow.session, SearchService(uow)).assemble_for_chapter(
+            skill_text = (self.skill_registry.render("draft", ch.project_id)
+                          if self.skill_registry else "")
+            pref_text = (self.preference_service.profile_text(ch.project_id)
+                         if self.preference_service else "")
+            assembled = Assembler(uow.session, SearchService(uow),
+                                  skill_text=skill_text,
+                                  preference_text=pref_text).assemble_for_chapter(
                 ch.project_id, ch.id, self.settings.context_budget, k)
             task.context_snapshot = {"ledger": assembled["ledger"],
                                      "total_tokens": assembled["total_tokens"],
@@ -205,16 +214,25 @@ class ChapterPipeline:
                 ChapterRepo(uow).accept(task.chapter_id, task_id=task_id)
                 task.decision = "接受"
                 task.status = "已接受"
+                pid = task.project_id
                 log.info("任务接受 task=%s chapter=%s", task_id, task.chapter_id)
             elif decision == "reject":
                 task.decision = "驳回"
                 task.status = "已驳回"
                 task.reject_tags = tags or []
                 task.reject_note = note
+                pid = task.project_id
                 log.info("任务驳回 task=%s tags=%s", task_id, tags)
             else:
                 raise StateConflict(f"非法决策: {decision}")
             uow.session.flush()
+        # 偏好学习：接受/驳回均记录事件（M5，事务外，不阻塞决策）
+        if self.preference_service is not None:
+            self.preference_service.record_decision(
+                pid, "accept" if decision == "accept" else "reject",
+                tags, note, task_id=task_id)
+        with UnitOfWork(self.factory) as uow:
+            task = self._task(uow, task_id)
             return {"task_id": task_id, "decision": task.decision, "status": task.status}
 
     # ---------- 驳回迭代：开新一轮（携反馈，M3 §3.3）----------

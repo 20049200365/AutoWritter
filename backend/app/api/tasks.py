@@ -31,7 +31,9 @@ class DecideBody(BaseModel):
 def _pipeline(request: Request) -> ChapterPipeline:
     return ChapterPipeline(request.app.state.session_factory,
                            request.app.state.provider,
-                           request.app.state.settings)
+                           request.app.state.settings,
+                           skill_registry=request.app.state.skill_registry,
+                           preference_service=request.app.state.preference_service)
 
 
 async def _sse(agen):
