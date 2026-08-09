@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, GENRES, POVS, TONES, Project, Stats } from './api'
+import { api, GENRES, TONES, Project, Stats } from './api'
 import { Empty, Modal, Toast, ToastMsg } from './ui'
 import Palette from './Palette'
 import TextPage from './pages/Text'
@@ -300,15 +300,13 @@ function NewProjectModal({ onClose, onCreated }: {
   const [title, setTitle] = useState('')
   const [genre, setGenre] = useState(GENRES[0])
   const [synopsis, setSynopsis] = useState('')
-  const [pov, setPov] = useState(POVS[1])
   const [tones, setTones] = useState<string[]>([])
-  const [target, setTarget] = useState(200000)
 
   async function submit() {
     if (!title.trim()) return
     const p = await api.post<Project>('/projects', {
       title: title.trim(), genre, synopsis: synopsis || null,
-      pov, tones, target_words: target || null,
+      tones: tones.length ? tones : null,
     })
     onCreated(p.id)
   }
@@ -319,23 +317,13 @@ function NewProjectModal({ onClose, onCreated }: {
       <div className="f-row"><label>书名</label>
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例如：无锋" />
       </div>
-      <div className="f-grid">
-        <div className="f-row"><label>题材</label>
-          <select value={genre} onChange={(e) => setGenre(e.target.value)}>
-            {GENRES.map((g) => <option key={g}>{g}</option>)}
-          </select>
-        </div>
-        <div className="f-row"><label>叙事人称</label>
-          <select value={pov} onChange={(e) => setPov(e.target.value)}>
-            {POVS.map((g) => <option key={g}>{g}</option>)}
-          </select>
-        </div>
+      <div className="f-row"><label>题材</label>
+        <select value={genre} onChange={(e) => setGenre(e.target.value)}>
+          {GENRES.map((g) => <option key={g}>{g}</option>)}
+        </select>
       </div>
-      <div className="f-row"><label>一句话简介</label>
+      <div className="f-row"><label>一句话简介<span className="hint">（可不填）</span></label>
         <textarea rows={2} value={synopsis} onChange={(e) => setSynopsis(e.target.value)} />
-      </div>
-      <div className="f-row"><label>目标字数</label>
-        <input type="number" value={target} onChange={(e) => setTarget(+e.target.value)} />
       </div>
       <div className="f-row"><label>基调（可多选）</label>
         <div className="tone-pick">

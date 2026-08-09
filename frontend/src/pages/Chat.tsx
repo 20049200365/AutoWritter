@@ -35,6 +35,8 @@ export default function ChatPage({ project, stats, onChanged, initialSession, ju
   const abortRef = useRef<AbortController | null>(null)
   const sidRef = useRef<number | null>(null)
   sidRef.current = sid
+  /* 新建会话时消息由 send 注入，跳过 useEffect 的历史加载，避免空数组覆盖刚注入的消息 */
+  const skipLoadRef = useRef(false)
 
   const loadSessions = () =>
     api.get<Session[]>(`/projects/${project.id}/sessions`).then((ss) => {
@@ -48,6 +50,7 @@ export default function ChatPage({ project, stats, onChanged, initialSession, ju
 
   useEffect(() => {
     if (sid == null) { setMsgs([]); return }
+    if (skipLoadRef.current) { skipLoadRef.current = false; return }
     api.get<any[]>(`/sessions/${sid}/messages`).then((ms) =>
       setMsgs(ms.filter((m) => m.role === 'user' || m.role === 'assistant').map((m) => ({
         role: m.role, content: m.content || '',
@@ -109,7 +112,11 @@ export default function ChatPage({ project, stats, onChanged, initialSession, ju
     setInput('')
     if (taRef.current) taRef.current.style.height = 'auto'
     let target = sidRef.current
-    if (target == null) target = (await newSession(t)).id
+    if (target == null) {
+      target = (await newSession(t)).id
+      /* 刚建的会话历史必为空：跳过历史加载，防止 setMsgs([]) 把刚注入的用户消息覆盖掉 */
+      skipLoadRef.current = true
+    }
     setBusy(true)
     setMsgs((cur) => [...cur,
       { role: 'user', content: t },
