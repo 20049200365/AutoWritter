@@ -141,6 +141,29 @@ def test_step_failure_isolated(env):
 
 # ---------- F8：大纲对账偏离 → 提醒建议 ----------
 
+def test_timeline_alias_keys_normalized(env):
+    """真模型键名不稳定（event/description）→ 归一化后建议卡片不得为空。"""
+    client, app = env
+    pid = client.post("/projects", json={"title": "t", "genre": "玄幻"}).json()["id"]
+    ch = client.post("/chapters", json={"project_id": pid, "title": "一"}).json()
+    client.post(f"/chapters/{ch['id']}/commit", json={"text": "沈听澜在剑台上挡下七剑。"})
+    canned = {
+        "请总结本章": "摘要。",
+        "抽取实体": '{"entities":[]}',
+        "分析（relations）": "[]",
+        "分析（foreshadows）": "[]",
+        "分析（timeline）": '[{"event":"剑台扬名","description":"沈听澜以剑鞘挡下七剑，满场皆惊"}]',
+        "大纲对账": '{"level":"对齐","points":[]}',
+    }
+    _run_postprocess(app, ch["id"], canned)
+    sessions = client.get(f"/projects/{pid}/sessions").json()
+    sug = next(x for x in sessions if x["title"] == "AI 提议")
+    pend = client.get("/suggestions", params={"session_id": sug["id"]}).json()
+    tl = [p for p in pend if p["suggestion"]["type"] == "timeline_event"]
+    assert tl and tl[0]["suggestion"]["title"] == "剑台扬名"
+    assert "沈听澜" in (tl[0]["suggestion"]["detail"] or "")
+
+
 def test_outline_check_suggestion(env):
     client, app = env
     pid, char, world, ch = _seed(client)

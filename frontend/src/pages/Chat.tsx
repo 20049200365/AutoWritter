@@ -1,0 +1,130 @@
+/* Agent 对话（M7 §9.2 页面 2）：会话管理 + SSE 流式 + 工具卡片（对齐 M3 §5 事件） */
+import { useEffect, useRef, useState } from 'react'
+import { api, Project, sseStream } from '../api'
+import { Empty } from '../ui'
+
+interface Session { id: number; title: string; created_at: string }
+interface Msg {
+  id?: number; role: 'user' | 'assistant'; content: string
+  tools?: Array<{ name: string; result?: string; done: boolean }>
+  streaming?: boolean
+}
+
+export default function ChatPage({ project }: { project: Project }) {
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [sid, setSid] = useState<number | null>(null)
+  const [msgs, setMsgs] = useState<Msg[]>([])
+  const [input, setInput] = useState('')
+  const [busy, setBusy] = useState(false)
+  const boxRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    api.get<Session[]>(`/projects/${project.id}/sessions`).then((ss) => {
+      setSessions(ss)
+      setSid((cur) => cur ?? ss[0]?.id ?? null)
+    })
+  }, [project.id])
+
+  useEffect(() => {
+    if (sid == null) { setMsgs([]); return }
+    api.get<any[]>(`/sessions/${sid}/messages`).then((ms) =>
+      setMsgs(ms.map((m) => ({ role: m.role, content: m.content || '' }))))
+  }, [sid])
+
+  useEffect(() => {
+    boxRef.current?.scrollTo({ top: boxRef.current.scrollHeight })
+  }, [msgs])
+
+  async function newSession() {
+    const s = await api.post<Session>('/sessions', { project_id: project.id, title: '新会话' })
+    setSessions((cur) => [...cur, s])
+    setSid(s.id)
+  }
+
+  async function send() {
+    const text = input.trim()
+    if (!text || busy) return
+    if (sid == null) { await newSession() }
+    const target = sid ?? sessions[sessions.length - 1]?.id
+    if (target == null) return
+    setInput('')
+    setBusy(true)
+    setMsgs((cur) => [...cur, { role: 'user', content: text },
+      { role: 'assistant', content: '', tools: [], streaming: true }])
+    try {
+      for await (const ev of sseStream(`/sessions/${target}/chat`, { text })) {
+        const d = ev.data || {}
+        setMsgs((cur) => {
+          const next = [...cur]
+          const ai = next[next.length - 1]
+          if (ev.event === 'tool_call') {
+            ai.tools = [...(ai.tools || []), { name: d.name, done: false }]
+          } else if (ev.event === 'tool_result') {
+            ai.tools = (ai.tools || []).map((t) =>
+              t.name === d.name && !t.done ? { ...t, result: d.result, done: true } : t)
+          } else if (ev.event === 'token') {
+            ai.content += d.delta
+          } else if (ev.event === 'done') {
+            ai.streaming = false
+          }
+          return [...next.slice(0, -1), { ...ai }]
+        })
+      }
+    } catch (e: any) {
+      setMsgs((cur) => {
+        const next = [...cur]
+        const ai = next[next.length - 1]
+        return [...next.slice(0, -1), { ...ai, content: ai.content + `\n（出错：${e.message}）`, streaming: false }]
+      })
+    }
+    setBusy(false)
+  }
+
+  return (
+    <div className="chat-wrap" style={{ maxWidth: 860, margin: '0 auto' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+        <select className="select" style={{ width: 220 }} value={sid ?? ''}
+          onChange={(e) => setSid(+e.target.value)}>
+          <option value="">选择会话…</option>
+          {sessions.map((s) => <option key={s.id} value={s.id}>{s.title || `会话 ${s.id}`}</option>)}
+        </select>
+        <button className="btn sm" onClick={newSession}>＋ 新会话</button>
+        {sid != null && (
+          <button className="btn sm danger" onClick={async () => {
+            await api.del(`/sessions/${sid}`)
+            setSessions((cur) => cur.filter((s) => s.id !== sid))
+            setSid(null)
+          }}>删除会话</button>
+        )}
+      </div>
+
+      <div className="chat-msgs" ref={boxRef}>
+        {msgs.length === 0 && (
+          <Empty text={sessions.length === 0 ? '和助手聊聊你的故事' : '这个会话还是空的'}
+            actionText="新开一个会话" onAction={newSession} />
+        )}
+        {msgs.map((m, i) => (
+          <div key={i} className={`msg ${m.role === 'user' ? 'user' : 'ai'}`}>
+            {(m.tools || []).map((t, j) => (
+              <div key={j} className="tool-card">
+                <span className="name">{t.name}</span>{' '}
+                {t.done ? '✓' : '⋯'}
+                {t.result && <div className="hint" style={{ marginTop: 3 }}>{t.result}</div>}
+              </div>
+            ))}
+            <span className={m.streaming ? 'cursor-blink' : ''}>{m.content}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="chat-input">
+        <textarea className="input" rows={2} value={input} placeholder="描述你的想法…（Enter 发送，Shift+Enter 换行）"
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
+          }} />
+        <button className="btn primary" disabled={busy || !input.trim()} onClick={send}>落笔</button>
+      </div>
+    </div>
+  )
+}

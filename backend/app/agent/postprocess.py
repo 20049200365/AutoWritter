@@ -101,37 +101,40 @@ class PostProcessor:
 
     def _step_relations(self, uow: UnitOfWork, chapter_id: int) -> None:
         suggestions = self._analyze(uow, chapter_id, "relations")
-        for s in suggestions:
+        for raw in suggestions:
+            s = _norm_item(raw)
             self._add_suggestion(uow, chapter_id, {
-                "type": "relation_change", "title": f"新关系提议：{s.get('label', '')}",
+                "type": "relation_change", "title": f"新关系提议：{s.get('label') or s.get('title') or ''}",
                 "detail": s.get("detail", ""), "evidence": s.get("evidence", ""),
-                "target": {k: s[k] for k in ("project_id", "src_kind", "src_id",
-                                             "dst_kind", "dst_id", "type") if k in s},
+                "target": {k: raw[k] for k in ("project_id", "src_kind", "src_id",
+                                             "dst_kind", "dst_id", "type") if k in raw},
             })
 
     def _step_foreshadows(self, uow: UnitOfWork, chapter_id: int) -> None:
         """伏笔只发提议，不碰 foreshadows 表（红线 F5）。"""
         ch = self._chapter(uow, chapter_id)
         data = self._analyze(uow, chapter_id, "foreshadows")
-        for s in data:
+        for raw in data:
+            s = _norm_item(raw)
             self._add_suggestion(uow, chapter_id, {
                 "type": "foreshadow_plant" if s.get("kind") == "plant" else "foreshadow_resolve",
-                "title": s.get("title", "伏笔提议"),
+                "title": s.get("title") or "伏笔提议",
                 "detail": s.get("detail", ""), "evidence": s.get("evidence", ""),
-                "target": {"project_id": ch.project_id, **{k: v for k, v in s.items()
+                "target": {"project_id": ch.project_id, **{k: v for k, v in raw.items()
                                                             if k in ("title", "description",
                                                                      "foreshadow_id", "chapter_id")}},
             })
 
     def _step_timeline(self, uow: UnitOfWork, chapter_id: int) -> None:
         ch = self._chapter(uow, chapter_id)
-        for s in self._analyze(uow, chapter_id, "timeline"):
+        for raw in self._analyze(uow, chapter_id, "timeline"):
+            s = _norm_item(raw)
             self._add_suggestion(uow, chapter_id, {
-                "type": "timeline_event", "title": s.get("title", "时间线事件"),
+                "type": "timeline_event", "title": s.get("title") or "时间线事件",
                 "detail": s.get("detail", ""), "evidence": s.get("evidence", ""),
                 "target": {"project_id": ch.project_id, "title": s.get("title", ""),
-                           "track": s.get("track", "main"),
-                           "time_label": s.get("time_label"),
+                           "track": raw.get("track", "main"),
+                           "time_label": raw.get("time_label") or s.get("detail", "")[:20],
                            "description": s.get("detail"), "chapter_id": chapter_id},
             })
 
@@ -170,6 +173,8 @@ class PostProcessor:
 
     def _add_suggestion(self, uow: UnitOfWork, chapter_id: int, payload: dict) -> None:
         ch = self._chapter(uow, chapter_id)
+        if not payload.get("title"):
+            payload["title"] = payload.get("detail") or "AI 建议（待查看）"
         session = self._ensure_suggestion_session(uow, ch.project_id)
         SessionRepo(uow).add_suggestion(session.id, payload)
 
@@ -203,6 +208,18 @@ class PostProcessor:
             job.status = status
             job.error = error
             uow.session.flush()
+
+
+def _norm_item(s: dict) -> dict:
+    """字段归一化：真模型返回的键名不稳定（title/event/name、detail/description），
+    统一映射到 title/detail/evidence，避免建议卡片出现空内容。"""
+    if not isinstance(s, dict):
+        s = {"title": str(s)}
+    title = (s.get("title") or s.get("event") or s.get("name")
+             or s.get("content") or s.get("summary") or "")
+    detail = s.get("detail") or s.get("description") or s.get("desc") or ""
+    evidence = s.get("evidence") or s.get("quote") or s.get("原文") or ""
+    return {**s, "title": str(title), "detail": str(detail), "evidence": str(evidence)}
 
 
 def _parse_json(raw: str):
