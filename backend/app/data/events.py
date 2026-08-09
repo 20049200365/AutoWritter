@@ -25,10 +25,13 @@ Handler = Callable[[dict[str, Any]], None]
 
 class EventBus:
     def __init__(self) -> None:
-        self._handlers: dict[str, list[Handler]] = defaultdict(list)
+        self._handlers: dict[str, list[tuple[str | None, Handler]]] = defaultdict(list)
 
-    def subscribe(self, event: str, handler: Handler) -> None:
-        self._handlers[event].append(handler)
+    def subscribe(self, event: str, handler: Handler, key: str | None = None) -> None:
+        """同 key 重复订阅时替换旧处理器（幂等，防重复注册）。"""
+        if key is not None:
+            self._handlers[event] = [(k, h) for k, h in self._handlers[event] if k != key]
+        self._handlers[event].append((key, handler))
 
     def clear(self) -> None:
         """测试夹具用。"""
@@ -36,7 +39,7 @@ class EventBus:
 
     def emit(self, event: str, payload: dict[str, Any]) -> None:
         logger.info("事件派发 event=%s payload=%s", event, payload)
-        for handler in self._handlers.get(event, []):
+        for _key, handler in self._handlers.get(event, []):
             try:
                 handler(payload)
             except Exception:  # noqa: BLE001 - 订阅者故障不阻塞主流程（§4.3）

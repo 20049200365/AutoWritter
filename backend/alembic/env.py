@@ -19,8 +19,10 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
+# 注意：disable_existing_loggers 必须为 False，否则每次迁移会永久禁用
+# 应用已创建的 logger（fileConfig 默认 True，是日志静默失效的经典坑）。
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 
 def _set_url() -> None:

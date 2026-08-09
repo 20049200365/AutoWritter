@@ -6,11 +6,14 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from .api import chapters, entities, outline, projects, sessions, skills, stubs, system
+from .api import chapters, entities, outline, projects, search, sessions, skills, stubs, system
 from .api.deps import register_error_handlers, register_request_logging
 from .config import REPO_ROOT, Settings
 from .data.db import make_engine, make_session_factory
+from .data.events import bus
 from .logging_utils import setup_logging
+from .search.service import ensure_fts_table
+from .search.wiring import register_index_subscribers
 
 log = logging.getLogger("m6.main")
 
@@ -34,14 +37,16 @@ def create_app() -> FastAPI:
     _run_migrations()
 
     engine = make_engine(settings.db_path)
+    ensure_fts_table(engine)
     app = FastAPI(title="Novel Studio API", version="0.1.0")
     app.state.session_factory = make_session_factory(engine)
     app.state.settings = settings
 
+    register_index_subscribers(bus, app.state.session_factory)
     register_error_handlers(app)
     register_request_logging(app)
 
-    for mod in (system, projects, outline, chapters, entities, skills, sessions, stubs):
+    for mod in (system, projects, outline, chapters, entities, skills, sessions, search, stubs):
         app.include_router(mod.router)
 
     # 静态托管：前端 dist/ 存在时挂载（M7 交付后启用，D8）

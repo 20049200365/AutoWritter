@@ -29,7 +29,6 @@ _STUBS = [
     ("PUT", "/preferences/{project_id}", "M5 画像手动修正"),
     ("GET", "/preferences/{project_id}/events", "M5 事件时间线"),
     ("POST", "/preferences/{project_id}/rollback", "M5 画像回滚"),
-    ("GET", "/projects/{project_id}/search", "M2 检索"),
 ]
 
 
