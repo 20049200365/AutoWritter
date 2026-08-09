@@ -75,7 +75,8 @@ chapters
   id PK | project_id FK NN IDX | outline_node_id FK→outline_nodes（可空=超纲章）
   seq NN | title NN | text default '' | word_count INT NN default 0
   status[构思|大纲|草稿|待修|定稿] NN default 构思 | sort NN
-  summary（章摘要，M8 写入）| created_at | updated_at | deleted_at
+  summary（章摘要，M8 写入）| plan（本章细纲：AI 生成 + 人工确认，所见即所得可改）
+  created_at | updated_at | deleted_at
   UQ(project_id, seq)
 
 chapter_versions
@@ -151,7 +152,8 @@ annotations
 
 generation_tasks
   id PK | project_id FK NN IDX | chapter_id FK NN IDX | round INT NN default 1
-  status[装配中|生成中|评审中|待决策|已接受|已驳回|失败] NN
+  status[装配中|细纲生成中|细纲确认中|扩写生成中|评审中|待决策|已接受|已驳回|失败] NN
+  plan json（本轮细纲快照，每轮留档）
   context_snapshot json（上下文账本）| draft_text | review json（评审契约见架构 §6.3）
   decision[待定|接受|驳回] default 待定 | reject_tags json | reject_note
   created_at | updated_at
@@ -185,6 +187,13 @@ chunk_entities
   PK(chunk_id, entity_type, entity_name) | IDX(entity_name)
 
 chunks_fts（FTS5 虚拟表：content=chunks，存 jieba 空格分词文本；M2 维护写入）
+
+postprocess_jobs（M8 后处理队列任务状态，支持断点恢复与重试）
+  id PK | project_id FK NN IDX | chapter_id FK NN | task_id FK→generation_tasks（可空）
+  step[summary|entities|relations|foreshadows|timeline|outline_check] NN
+  status[pending|running|done|failed] NN default pending | attempts INT default 0
+  error | created_at | updated_at
+  UQ(chapter_id, step, attempts 维度由应用层判重)
 ```
 
 ---
@@ -240,6 +249,9 @@ class StatsService:
 
 —— AI 建议不单设 Repository：写入/采纳/驳回走 SessionRepo 的 suggestion 标记消息，
    采纳时在事务内应用 payload 对应写入并更新 suggestion_status
+
+class PreferenceRepo:
+    def rollback(self, project_id, version) -> None           # 从 snapshots 回滚画像（M6 路由依赖）
 ```
 
 ### 4.3 领域事件清单（◆ 冻结契约）

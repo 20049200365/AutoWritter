@@ -66,7 +66,7 @@ idle → thinking → tool_call → tool_result → thinking → … → done
 |---|---|
 | 生成上下文 | ContextAssembler 按架构 SPEC §5.3 的 P0~P4 优先级 × 预算装配；每层记入 `context_snapshot` 账本（来源、tokens、优先级、是否被压缩） |
 | token 计数 | LiteLLM token_counter；不可用时按中文 1 字 ≈ 1 token 估算，账本标注 `estimated` |
-| 超预算压缩 | 从 P4 向 P2 依次减量（原文块 top-K 减半 → 词条减半 → 人物卡只留核心字段）；P0/P1 不压缩；压缩动作记入账本 |
+| 超预算压缩 | 仅在逼近预算上限时兜底：从 P4 向 P2 依次减量（原文块 top-K 减半 → 词条减半 → 人物卡只留核心字段）；P0/P1 不压缩；压缩动作记入账本 |
 | 对话滚动上下文 | 会话历史超过 `session_token_budget`（默认 8k）时，distiller 把旧消息压缩为一条摘要消息（落库可审计），压缩失败不阻塞对话（降级为截断） |
 | 会话隔离 | 生成任务与对话会话各用独立的消息容器与任务记录，物理上不可能串话 |
 
@@ -81,56 +81,124 @@ idle → thinking → tool_call → tool_result → thinking → … → done
 5. 记账：每片段记 {来源, 优先级, tokens, 状态[装入|压缩|丢弃]} → context_snapshot
 ```
 
+> **为什么要逐条测 token**：预算是软上限（默认 128k），但逐片段测量是记账与逼近上限时裁剪的依据（就像装行李箱，先知道每件东西的尺寸才决定装什么、留什么）。测量不是逐字数：每个片段过一次分词器，毫秒级，代价可忽略。
+
 三个装配场景（均在编排层实现，共用上述算法，只是层定义与预算不同）：
 
 | 场景 | 入口 | 层定义 | 默认预算 |
 |---|---|---|---|
-| 章节生成 | ChapterPipeline.generate | P0~P4（架构 §5.3） | 16k |
-| 划选改写 | RewriteService.rewrite | R0~R3（§3.4） | 4k |
+| 章节生成 | ChapterPipeline.generate | P0~P4（架构 §5.3） | 128k |
+| 划选改写 | RewriteService.rewrite | 简化通道：选区+指令直接喂 Agent，不做分层装配（§3.4） | 极小 |
 | 大纲/世界观辅助 | 对话工具 draft_outline 等 | O0~O2（§4.3） | 8k |
+
+### 2.6 装配实例：生成一章的端到端走查（查哪张表→拼成什么）
+
+例：玄幻小说写第 5 章「试剑峰会」，大纲节拍="沈听澜携无锋剑赴峰会，北冥阁当众挑衅"，预算 128k（可配，大上下文时代预算是软约束），prior_full_k=3。装配层服务于两阶段（§3.1）：**细纲阶段用 P0~P2；扩充阶段才加 P3/P4，Skill draft 注入仅用于扩充**。全程如下（查询均经 Repository，为直观写成 SQL）：
+
+**第 1 步 · P0 必装（偏好/Skill）**
+```
+① SELECT likes, dislikes, hard_constraints FROM preference_profile WHERE project_id=1
+   → 拼成段落：「用户偏好：喜欢短句；避免大段心理独白；禁止……」
+② SELECT filepath FROM skills WHERE enabled=1 AND (scope='global' OR project_id=1)
+   → SkillRegistry.render('draft') 返回玄幻写作惯例文本
+```
+
+**第 2 步 · P1 必装（本章定位 + 衔接锚点）**
+```
+④ SELECT * FROM outline_nodes WHERE id=23          ← 本章叶子节点
+   沿 parent_id 向上查两级（篇章→卷），各级取 title + summary
+   → 拼成：「卷一概要 → 篇章二概要 → 本章节拍：……」
+⑤ SELECT text FROM chapters WHERE project_id=1 AND seq=4   → 取末尾 1500 字（衔接锚点）
+⑥ SELECT seq, title, summary FROM chapters WHERE seq < 4   → K 章之外的更早章摘要
+```
+
+**第 3 步 · P2 必装（前 K 章全文 + 伏笔 + 人物 + 关系子图）**
+```
+⑥' SELECT seq, title, text FROM chapters WHERE seq IN (2,3,4)
+    → 前 K 章全文原文（prior_full_k，默认 3，必装不裁剪）；
+      若 P0+P1+P2 已超预算 → 报 budget_exceeded，提示调小 K，不静默裁剪
+⑦ SELECT * FROM foreshadows WHERE project_id=1 AND state<>'已回收'
+   → 每条一行；planned_resolve_chapter_id=5 的标注「用户指定本章回收」（回收决策来自用户标记，非 AI 判断）
+⑧ 确定本章涉及人物：
+   SELECT id, name, aliases FROM characters WHERE project_id=1   （人物量小，全表扫）
+   Python 中用 name/aliases 对节拍文本做子串匹配 → 命中：沈听澜、北冥阁主
+⑨ 一跳关系子图：
+   SELECT * FROM relations WHERE project_id=1 AND
+     ((src_kind='char' AND src_id IN (命中集)) OR (dst_kind='char' AND dst_id IN (命中集)))
+   对 kind='world' 的端点补 SELECT * FROM world_entries WHERE id=<端点id>
+   → 沿「隶属」边顺带搜出「听澜剑宗」词条
+⑩ 拼人物卡：姓名(定位)/表层动机/深层秘密/关系行（type+对方+label）
+```
+
+**第 4 步 · P3 选装（世界观词条）**
+```
+⑪ SearchService.search(query=节拍文本+人物名, source_types=['world'], k=8)
+   → M2 内部：jieba 分词查 chunks_fts（BM25）+ chunk_entities 实体路
+   → 命中：无锋剑/北冥阁/试剑峰会
+⑫ 每条拼为「词条名：内容」（单条截断 400 字）
+```
+
+**第 5 步 · P4 选装（更早原文块）**
+```
+⑬ SearchService.search(query=本章实体名, source_types=['chapter'], k=10,
+                        chapter_range=[1, seq-K-1])   ← 前 K 章已在 P2，不重复检索
+⑭ 累计 token 超预算 → k 降为 5（超限压缩，记入账本）
+```
+
+**第 6 步 · 拼成最终 prompt**
+```
+[System] 写手角色设定 + Skill draft 注入（仅扩充阶段）+ 用户偏好
+[User]
+  ## 本章定位（卷→篇章→节拍） ← ④
+  ## 本章细纲（已人工确认）   ← 细纲阶段产物（扩充阶段独有）
+  ## 前章结尾              ← ⑤
+  ## 更早章节摘要            ← ⑥
+  ## 前 K 章全文            ← ⑥'（必装）
+  ## 活跃伏笔              ← ⑦
+  ## 本章涉及人物与关系     ← ⑩
+  ## 相关世界观            ← ⑫
+  ## 更早相关原文           ← ⑬
+  ## 写作指令（字数目标、章题）
+```
+细纲阶段的 prompt 即上述去掉 P3/P4、Skill 与细纲段的子集。全程记录写入 context_snapshot：{来源表.字段, 优先级, tokens, 状态}，前端可逐条展开看"本章 AI 看到了什么"。大纲/世界观辅助（O 层）同样走这个流程，只是查的表不同（§4.3）；划选改写走简化通道（§3.4），不做分层装配。
 
 ---
 
 ## 3. 单章生成流水线
 
-### 3.1 状态机（generation_tasks.status）
+### 3.1 状态机（generation_tasks.status）—— 两阶段生成（已决策）
 
 ```
-装配中 → 生成中 → 评审中 → 待决策 ─┬→ 已接受 ──►（M1 事件 → M8 后处理）
-                                    └→ 已驳回 ──► round+1 新任务（携驳回反馈）
-任意阶段可 → 失败（可重试错误标记 resumable）
+装配中 → 细纲生成中 → 细纲确认中(人工) → 扩写生成中 → 评审中 → 待决策
+                                                            ├→ 已接受 ─►（M1 事件 → M8 后处理）
+                                                            └→ 已驳回 ─► 回退细纲确认 或 round+1 重扩写
+任意阶段可 → 失败（可重试错误标记 resumable）；用户可 skip_plan 直接进入扩写
 ```
 
 ### 3.2 阶段详情
-1. **装配中**：ContextAssembler 产出 context_snapshot；失败（如检索服务不可用）→ 任务失败且 resumable
-2. **生成中**：writer prompt = 系统角色设定 + Skill `draft` 注入 + 偏好画像段 + 装配上下文 + 本章大纲节拍 + 写作指令；流式输出草稿；每收到增量更新 task.draft_text（节流落库，默认 500ms 一次）
-3. **评审中**：reviewer prompt = 草稿 + 上下文要点摘要 + Skill `review` 注入 + 偏好评审权重；要求输出 §6.3 契约 JSON；schema 校验失败自动重请一次，再失败 → 任务失败（草稿保留）
-4. **待决策**：前端展示草稿 + 评审；用户接受/驳回
-5. **已驳回**：记录 preference_event（经 M5）；用户填驳回标签+意见后，创建 round+1 新任务，prompt 追加「上轮草稿 + 评审意见 + 驳回反馈」作为修改依据
-6. **已接受**：调 M1 `ChapterRepo.accept` → 发事件；草稿成为正文 v N
+1. **装配中**：ContextAssembler 产出 context_snapshot（细纲/扩充两份账本）；失败 → 任务失败且 resumable
+2. **细纲生成中**：writer 模型基于 P0~P2 装配（不含 P3/P4 与 Skill draft）产出**本章细纲**，结构 = 情节节拍（3~6 条，每条一句）+ 涉及实体清单（人物/势力/地点/器物）+ 伏笔段（= 提醒：用户已标记「本章回收」的条目 + 可选的 AI 回收提议，提议必须显式标注）。**Agent 的能力边界止于提议：埋设/回收提议均需用户确认才生效，AI 永不直接变更伏笔状态**；用户确认细纲时保留的提议等同于用户指示，删除的提议视为拒绝；落库 chapters.plan，发 `plan_ready` 事件
+3. **细纲确认中**：前端展示细纲供用户**编辑或确认**（所见即所得可改）；确认/修改后落库，进入扩写；用户可选「跳过细纲」直接生成（偏好或紧急场景）
+4. **扩写生成中**：writer prompt = P0~P4 全装配 + Skill `draft` 注入 + **已确认细纲** + 写作指令；流式输出草稿，节流落库（默认 500ms）
+5. **评审中**：reviewer prompt = 草稿 + 细纲 + 上下文要点 + Skill `review` 注入 + 偏好评审权重；输出 §6.3 契约 JSON；schema 校验失败自动重请一次，再失败 → 任务失败（草稿保留）
+6. **待决策 → 已接受**：调 M1 `ChapterRepo.accept` → 发事件；草稿成为正文 v N
 
-### 3.3 轮次控制
-- `max_rounds`（默认 5）：同一章连续驳回达到上限后提示用户人工介入，不再自动开新轮
-- 每轮任务独立留档（round 字段），前端可对比任意两轮草稿
+### 3.3 驳回与轮次控制
+- **驳回分路**：问题在情节方向 → 回退「细纲确认」（改细纲后重扩，同一 round）；仅文笔问题 → 同一细纲直接重扩；无法判断时由驳回标签指定（标签集增加「情节方向不对」）
+- 驳回记录 preference_event（经 M5）；重扩 prompt 追加「上轮草稿 + 评审意见 + 驳回反馈」
+- `max_rounds`（默认 5）：同一章连续驳回达上限后提示人工介入，不再自动开新轮
+- 每轮细纲与草稿独立留档（round），前端可对比任意两轮
 
-### 3.4 改写操作（划选式修改的后端）
-独立轻量通道 `RewriteService`，不走评审：
+### 3.4 改写操作（划选式修改的后端）—— 简化版（已决策）
+独立轻量通道 `RewriteService`，不走评审、**不做分层装配**：
 ```
 rewrite(chapter_id, start, end, op[润色|精简|扩写|改人称|自由指令], instruction?)
+  → 直接把选中文本 + 操作/指令（+ 用户偏好档案）喂给 Agent
   → SSE 流式返回改写结果 + 原文对照
 ```
-
-**改写上下文装配（R 层，预算 4k，走 §2.5 算法）**：
-
-| 层 | 内容 | 取法 |
-|---|---|---|
-| R0 | 偏好画像风格段 + Skill `draft` 注入 | 直查 |
-| R1 | 选中文本 + 前后各 3 段（~1500 字） | 正文按锚点位置切片 |
-| R2 | 章标题 + 开头 ~300 字（文风锚点） | 直查 |
-| R3 | 选区涉及人物的卡片 | 选区文本与 characters.name/aliases 精确匹配 |
-
-- 硬性要求（对齐 Demo 红线）：**对任意选中文本必须产出可见变化**；词典式替换命中不了时走结构式兜底（如精简=切除最长修饰从句，润色=重组最长句），禁止返回"未检测到可改动处"
-- 前端拿结果渲染对照卡片；采纳=调 M1 更新正文（新版本留档），M3 不直接改库
+- 简化决策：首期不为改写装配周边上下文（前后段落、文风锚点等），选区直接交给模型；若后续实践中改写质量不足（如与前后文衔接变差），再评估补周边上下文
+- 硬性要求（对齐 Demo 红线）：**对任意选中文本必须产出可见变化**，禁止返回"未检测到可改动处"这类空转结果
+- 前端拿结果渲染对照卡片（采纳替换 / 放弃 / 再来一次）；采纳=调 M1 更新正文（新版本留档），M3 不直接改库
 
 ### 3.5 起草入口
 - `draft_from_outline(chapter_id)`：章无正文时，按其 L3 节拍起草（进入 3.1 正常流水线）
@@ -139,7 +207,9 @@ rewrite(chapter_id, start, end, op[润色|精简|扩写|改人称|自由指令],
 ### 3.6 Pipeline API（◆ 冻结契约，供 M6 挂载）
 ```python
 class ChapterPipeline:
-    async def generate(self, chapter_id, instruction=None) -> AsyncIterator[SseEvent]
+    async def generate(self, chapter_id, instruction=None, skip_plan=False,
+                       prior_full_k=None) -> AsyncIterator[SseEvent]
+    async def confirm_plan(self, task_id, plan_edited=None) -> None   # 确认/修改后的细纲
     async def decide(self, task_id, decision[accept|reject], tags=None, note=None) -> TaskDTO
     async def cancel(self, task_id) -> None
     async def resume(self, task_id) -> AsyncIterator[SseEvent]   # 失败/中断任务续跑
@@ -183,21 +253,34 @@ class ChatAgent:
 
 产出物一律走**建议消息**：AI 生成大纲节点/世界观词条建议，人工采纳才写库（经 M1），绝不直接落库；采纳后的节点继承树的排序与层级校验。
 
+两个方向共用同一套 O 层，互为锚点：
+- **写大纲时**：O2 的世界观词条提供设定约束（篇章不能和设定打架）
+- **写世界观时**：O1 的大纲树提供情节锚点（词条服务于已知剧情）
+- **初始化冷启动**：筹备早期 O1/O2 可能都是空的，装配结果只剩 O0（偏好+Skill）——此时对话 Agent 走引导分支（对齐 Demo 空项目必过测试：说清当前缺什么、下一步填什么），而非硬编内容。
+
 ---
 
 ## 5. SSE 事件协议（◆ 冻结契约）
 
-### 5.1 事件类型
+### 5.1 事件类型（可见性优先：每个阶段的进展与产出都推给前端）
 ```
-event: thinking      data: {task_id, delta}                # 思考过程增量
+event: progress      data: {task_id, stage[装配|细纲|扩写|评审], pct?}   # 阶段切换
+event: context_ready data: {task_id, ledger}                  # 装配完成：材料清单+注入的Skill+token账目
+event: thinking      data: {task_id, delta}                   # 思考过程增量
 event: tool_call     data: {task_id, call_id, name, args, status[calling|done|error]}
 event: tool_result   data: {task_id, call_id, result}
-event: token         data: {task_id, delta}                # 正文增量
-event: review        data: {task_id, review}               # 评审 JSON（§6.3 契约）
-event: progress      data: {task_id, stage[装配|生成|评审], pct?}
+event: plan_ready    data: {task_id, plan}                    # 细纲产出，等待人工确认
+event: token         data: {task_id, delta}                   # 正文增量
+event: review        data: {task_id, review}                  # 评审 JSON（§6.3 契约）
+event: snapshot      data: {task_id, status, text, plan?, review?}  # 重连时的全量快照
 event: done          data: {task_id}
 event: error         data: {task_id, code, message, resumable}
 ```
+
+**可见性设计（用户红线）**：
+- `context_ready` 的 ledger = context_snapshot 的前端版：逐条材料 {来源, 优先级, tokens, 状态[装入|压缩]} + **本次注入的 Skill 清单**（名称+注入点）+ 偏好条目数；前端渲染为"本章 AI 看到了什么"卡片与 Skill 徽标
+- Skill 本身不在生成时加载（SkillRegistry 启动/热切换时加载）；生成时发生的是注入，注入事实通过 ledger 可见（对齐验收 B12）
+- 工具调用的入参与返回、细纲、评审全部作为事件推达，前端无隐藏环节
 
 ### 5.2 流式机制
 | 机制 | 设计 |
@@ -228,7 +311,7 @@ SessionRepo / GenerationTaskRepo / ChapterRepo / OutlineRepo / CharacterRepo / R
 ```python
 class SearchService:
     def search(self, query, source_types, project_id, k=10, chapter_range=None) -> list[HitDTO]
-        # HitDTO: source_type, source_id, ord, text, score, matched_by[entity|fts]
+        # HitDTO: source_type, source_id, ord, text, score, matched_by[entity|fts|rewrite]
     def entities_of(self, chapter_id) -> list[str]    # 该章涉及实体名，供装配 P4 查询展开
 ```
 
@@ -241,8 +324,9 @@ class SearchService:
 ## 7. 配置项
 ```
 llm:      writer / reviewer / distiller 各自的 model、base_url、api_key、temperature
-budgets:  context_budget=16000, session_token_budget=8000
+budgets:  context_budget=128000（可配置至模型上限）, session_token_budget=8000
 guards:   max_tool_rounds=8, tool_timeout_s=60, max_rounds=5
+pipeline: prior_full_k=3（前 K 章全文必装）
 stream:   flush_interval_ms=500
 ```
 
@@ -250,7 +334,8 @@ stream:   flush_interval_ms=500
 
 ## 8. 验收标准
 
-> B 系列；全部可用 FakeProvider 在 CI 跑，不依赖真实 LLM API。
+> 测试策略分两层：① 验收用例（B 系列）全部用 FakeProvider 跑——确定性、零成本、离线可跑，验的是机制正确性；② 每个里程碑另跑「真实链路冒烟」：用真实 API key 实际写通一章，验提示词质量与真模型行为（key 由用户提供）。两层缺一不可：只跑 Fake 验不出效果，只跑真模型无法断言、无法高频回归。
+> 依赖关系：FakeProvider 与真 Provider 是同一接口的两个实现（§2.1），接口先冻结（P0 契约），上层在真 Provider 就绪前即可全量测试。
 
 | # | 指标 | 判定 |
 |---|---|---|
@@ -262,7 +347,9 @@ stream:   flush_interval_ms=500
 | B6 | **数据驱动 + 空项目冒烟**：空项目（0 章/0 人物/0 伏笔）触发全部工具 → 回复不含任何预置专名、走引导分支、工具返回如实报 0 | 对照 Demo §五必过 |
 | B7 | **评审契约**：reviewer 输出通过 JSON schema 校验（5 维度分 + issues + 权重说明）；故意给坏 JSON → 自动重请一次后标记失败且草稿保留 | 用例 |
 | B8 | **停止生成**：生成中取消 → 发 done{cancelled}，半截草稿留档并标记，可基于它续写或重生成 | 用例 |
-| B9 | **驳回迭代**：驳回带标签+意见 → 新轮任务 prompt 含上轮草稿与反馈；round 号递增；达 max_rounds 停止自动开轮 | 用例 |
+| B9 | **驳回迭代**：驳回带标签+意见 → 重扩 prompt 含上轮草稿与反馈；「情节方向不对」回退细纲确认；round 号递增；达 max_rounds 停止自动开轮 | 用例 |
+| B13 | **细纲确认与伏笔边界**：细纲伏笔段含用户标记提醒；AI 回收提议必须显式标注「提议」；用户保留的提议进入扩写指令、删除的不生效；AI 输出中不得出现未经标注的既成事实式回收描述 | 用例 |
+| B14 | **前 K 章全文**：prior_full_k=3 时第 2~4 章全文装入且账本可证；构造 K 过大超预算 → 报 budget_exceeded 并提示调小 K，不静默裁剪 | 用例 |
 | B10 | **离网可测**：全套流水线测试用 FakeProvider 通过，CI 不配置任何真实 API key | CI 配置即证明 |
 | B11 | **改写兜底**：对 10 组刁钻选区（短句/纯对话/无修辞）执行四种改写 → 每次均产出可见变化，无「未检测到可改动处」 | 用例 |
 | B12 | **Skill/画像注入可见**：账本中可查证 draft 阶段注入了哪些 Skill 段落与偏好条目；Skill 停用后新任务账本不再含该段 | 账本断言 |
