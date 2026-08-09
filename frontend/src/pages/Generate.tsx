@@ -116,7 +116,7 @@ export default function GeneratePage({ project, onChanged }: {
   const ch = chapters.find((c) => c.id === chId)
 
   return (
-    <div className="page-pad" style={{ maxWidth: 980, margin: '0 auto', width: '100%' }}>
+    <div className="out-wrap"><div className="out-inner">
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center' }}>
         <select className="select" style={{ width: 240 }} value={chId ?? ''}
           onChange={(e) => { setChId(+e.target.value); reset() }}>
@@ -158,7 +158,7 @@ export default function GeneratePage({ project, onChanged }: {
             </span>
             {skillsInj.length > 0 && (
               <span style={{ marginLeft: 10 }}>
-                {skillsInj.map((s) => <span key={s} className="pill violet" style={{ marginRight: 4 }}>Skill·{s}</span>)}
+                {skillsInj.map((s) => <span key={s} className="tag zi" style={{ marginRight: 4 }}>Skill·{s}</span>)}
               </span>
             )}
             <span style={{ flex: 1 }} />
@@ -168,10 +168,10 @@ export default function GeneratePage({ project, onChanged }: {
             <div className="ledger" style={{ marginTop: 8 }}>
               {ledger.map((it, i) => (
                 <div className="item" key={i}>
-                  <span className="pill">{it.layer}</span>
+                  <span className="tag">{it.layer}</span>
                   <span style={{ flex: 1 }}>{it.name}</span>
                   <span className="mono hint">{it.tokens}</span>
-                  <span className={`pill ${it.status === '装入' ? 'leaf' : 'ochre'}`}>{it.status}</span>
+                  <span className={`tag ${it.status === '装入' ? 'lv' : 'zhe'}`}>{it.status}</span>
                 </div>
               ))}
             </div>
@@ -182,11 +182,13 @@ export default function GeneratePage({ project, onChanged }: {
       {/* 细纲确认 */}
       {stage === '细纲确认' && plan && (
         <div className="card" style={{ marginBottom: 12 }}>
-          <h3 style={{ fontSize: 14, marginBottom: 8 }}>细纲（可改，AI 提议请甄别）</h3>
-          <textarea className="input plan-editor" rows={9} value={planDraft}
-            onChange={(e) => setPlanDraft(e.target.value)} />
-          <div className="actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
-            <button className="btn primary" disabled={streaming} onClick={confirmPlan}>确认，开始扩写</button>
+          <div className="hd"><h3>细纲（可改，AI 提议请甄别）</h3></div>
+          <div style={{ padding: 14 }}>
+            <textarea className="input plan-editor" rows={9} value={planDraft}
+              onChange={(e) => setPlanDraft(e.target.value)} />
+            <div className="m-acts" style={{ marginTop: 10 }}>
+              <button className="btn primary" disabled={streaming} onClick={confirmPlan}>确认，开始扩写</button>
+            </div>
           </div>
         </div>
       )}
@@ -194,22 +196,21 @@ export default function GeneratePage({ project, onChanged }: {
       {/* 扩写流式 */}
       {(stage === '扩写' || draft) && (
         <div className="card" style={{ marginBottom: 12 }}>
-          <h3 style={{ fontSize: 14, marginBottom: 8 }}>草稿{streaming && stage === '扩写' ? '（生成中…）' : ''}</h3>
-          <div className={`prose${streaming && stage === '扩写' ? ' cursor-blink' : ''}`}
-            style={{ whiteSpace: 'pre-wrap' }}>{draft}</div>
+          <div className="hd"><h3>草稿{streaming && stage === '扩写' ? '（生成中…）' : ''}</h3></div>
+          <div className="prose" style={{ whiteSpace: 'pre-wrap' }}>{draft}{streaming && stage === '扩写' && <span className="cursor" />}</div>
         </div>
       )}
 
       {/* 评审 */}
       {review && (
         <div className="card" style={{ marginBottom: 12 }}>
-          <h3 style={{ fontSize: 14, marginBottom: 10 }}>评审 · 综合 {review.overall} 分</h3>
-          <div className="radar-box">
+          <div className="hd"><h3>评审 · 综合 {review.overall} 分</h3></div>
+          <div className="radar-box" style={{ padding: 14 }}>
             <Radar scores={review.scores} />
             <div style={{ flex: 1, minWidth: 260 }}>
               {review.issues.map((iss, i) => (
                 <p key={i} style={{ fontSize: 12.5, marginBottom: 6 }}>
-                  <span className={`pill ${iss.level === '高' ? 'seal' : iss.level === '中' ? 'ochre' : ''}`}>{iss.level}</span>{' '}
+                  <span className={`tag ${iss.level === '高' ? 'seal' : iss.level === '中' ? 'zhe' : ''}`}>{iss.level}</span>{' '}
                   <strong>{iss.type}</strong>：{iss.detail}
                 </p>
               ))}
@@ -229,12 +230,14 @@ export default function GeneratePage({ project, onChanged }: {
             <button className="btn danger" onClick={() => decide('reject')}>驳回</button>
             {rejecting && (
               <span style={{ display: 'inline-flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
-                {REJECT_TAGS.map((t) => (
-                  <button key={t} className={`pill${tags.includes(t) ? ' seal' : ''}`}
-                    onClick={() => setTags((cur) => cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t])}>
-                    {t}
-                  </button>
-                ))}
+                <span className="tone-pick">
+                  {REJECT_TAGS.map((t) => (
+                    <button key={t} className={tags.includes(t) ? 'on' : ''}
+                      onClick={() => setTags((cur) => cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t])}>
+                      {t}
+                    </button>
+                  ))}
+                </span>
                 <input className="input" style={{ width: 180 }} placeholder="补充意见…"
                   value={note} onChange={(e) => setNote(e.target.value)} />
                 <button className="btn danger sm" onClick={() => decide('reject')}>确认驳回</button>
@@ -247,7 +250,7 @@ export default function GeneratePage({ project, onChanged }: {
       {!stage && chapters.length === 0 && (
         <Empty text="先在正文页开一章，再回来生成" />
       )}
-    </div>
+    </div></div>
   )
 }
 

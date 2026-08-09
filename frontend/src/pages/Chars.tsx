@@ -76,12 +76,14 @@ export default function CharsPage({ project, onChanged }: {
     `${r.src_kind}:${r.src_id}` === selected || `${r.dst_kind}:${r.dst_id}` === selected) : []
 
   return (
-    <div className="page-pad grid" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
-      <div>
-        <div style={{ display: 'flex', gap: 6, marginBottom: 10, alignItems: 'center' }}>
-          {(['全部', '人物', '实体'] as const).map((f) => (
-            <button key={f} className={`pill${filter === f ? ' seal' : ''}`} onClick={() => setFilter(f)}>{f}</button>
-          ))}
+    <div className="chars-wrap">
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: '12px 16px' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+          <div className="seg">
+            {(['全部', '人物', '实体'] as const).map((f) => (
+              <button key={f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>{f}</button>
+            ))}
+          </div>
           <span style={{ flex: 1 }} />
           <button className="btn sm" onClick={() => setEditRel(true)}>＋ 关系</button>
           <button className="btn primary sm" onClick={() => setEditChar('new')}>＋ 人物</button>
@@ -93,28 +95,30 @@ export default function CharsPage({ project, onChanged }: {
         )}
       </div>
 
-      <div>
-        {selChar ? (
-          <CharProfile char={selChar} rels={selRels} chars={chars} worlds={worlds}
-            onEdit={() => setEditChar(selChar)} onChanged={load} />
-        ) : (
-          <div className="card">
-            <h2 className="h2">人物列表</h2>
-            <div className="row-list">
-              {chars.map((c) => (
-                <div key={c.id} className="row-item" style={{ cursor: 'pointer' }}
-                  onClick={() => setSelected(`char:${c.id}`)}>
-                  <span className="grow"><span className="t">{c.name}</span>
-                    <span className="s" style={{ display: 'block' }}>{c.role || '未定位'} · {c.gender || '—'}</span>
-                  </span>
-                  <button className="icon-btn" onClick={(e) => { e.stopPropagation(); setEditChar(c) }}>✎</button>
-                </div>
-              ))}
+      {selChar ? (
+        <CharProfile char={selChar} rels={selRels} chars={chars} worlds={worlds}
+          onEdit={() => setEditChar(selChar)} onChanged={load} />
+      ) : (
+        <aside className="profile">
+          <div className="pf-hd">
+            <span className="pf-seal">谱</span>
+            <div>
+              <h3>人物列表</h3>
+              <span className="pf-role">{chars.length} 人 · 点图中节点看档案</span>
             </div>
-            <p className="hint kai" style={{ marginTop: 10 }}>点图中节点看档案；「想要什么」与「真正需要什么」要打架。</p>
           </div>
-        )}
-      </div>
+          {chars.map((c) => (
+            <button key={c.id} className="row" onClick={() => setSelected(`char:${c.id}`)}>
+              <span className="r-main">
+                <span className="r-t">{c.name}</span>
+                <span className="r-s">{c.role || '未定位'} · {c.gender || '—'}</span>
+              </span>
+              <span className="row-act icon-btn" onClick={(e) => { e.stopPropagation(); setEditChar(c) }}>✎</span>
+            </button>
+          ))}
+          <div className="notice">「想要什么」与「真正需要什么」要打架，人物才立得住。</div>
+        </aside>
+      )}
 
       {editChar && (
         <CharModal project={project} char={editChar === 'new' ? null : editChar}
@@ -181,8 +185,8 @@ function Graph({ nodes, links, selected, onSelect }: {
   const edgeTypes = [...new Set(links.map((l) => l.type))]
 
   return (
-    <div className="graph-box" ref={boxRef} style={{ height: 480 }}>
-      <svg ref={svgRef} onPointerMove={(e) => {
+    <div className={`graphbox${selected ? ' focused' : ''}`} ref={boxRef}>
+      <svg className="graph" ref={svgRef} onPointerMove={(e) => {
         const n = dragRef.current
         if (!n) return
         const p = pos(e)
@@ -231,14 +235,15 @@ function Graph({ nodes, links, selected, onSelect }: {
           )
         })}
       </svg>
-      <div className="graph-legend">
+      <div className="legend">
+        <span className="lg-t">关系类型</span>
         {edgeTypes.map((t) => (
-          <span key={t} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <svg width={18} height={6}><line x1={0} y1={3} x2={18} y2={3} stroke={relColor(t)} strokeWidth={2}
+          <span key={t} className="lg-i">
+            <svg width={26} height={8}><line x1={0} y1={4} x2={26} y2={4} stroke={relColor(t)} strokeWidth={2}
               strokeDasharray={t === '对抗' ? '5 3' : undefined} /></svg>{t}
           </span>
         ))}
-        <span>○ 人物</span><span style={{ color: 'var(--ochre)' }}>◦ 世界观实体</span>
+        <span className="lg-i">○ 人物 · ◦ 世界观实体</span>
       </div>
     </div>
   )
@@ -266,37 +271,43 @@ function CharProfile({ char, rels, chars, worlds, onEdit, onChanged }: {
   ]
 
   return (
-    <div className="card">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <h2 className="h2" style={{ marginBottom: 0 }}>{char.name}</h2>
-        {char.role && <span className="pill">{char.role}</span>}
+    <aside className="profile">
+      <div className="pf-hd">
+        <span className="pf-seal">{char.name[0]}</span>
+        <div>
+          <h3>{char.name}</h3>
+          <span className="pf-role">{char.role || '未定位'} · {char.gender || '—'}</span>
+        </div>
         <span style={{ flex: 1 }} />
         <button className="btn sm" onClick={onEdit}>编辑</button>
         <button className="btn sm danger" onClick={removeChar}>删除</button>
       </div>
       {rows.map(([k, v]) => (
-        <p key={k} style={{ fontSize: 13, marginBottom: 6 }}>
-          <span className="hint">{k}：</span>{v || <span className="hint">（待补）</span>}
-        </p>
-      ))}
-      <h3 style={{ fontSize: 13, margin: '10px 0 6px' }}>关系</h3>
-      {rels.length === 0 ? <p className="hint">暂无关系</p> : (
-        <div className="row-list">
-          {rels.map((r) => {
-            const other = `${r.src_kind}:${r.src_id}` === `char:${char.id}`
-              ? nameOf(r.dst_kind, r.dst_id) : nameOf(r.src_kind, r.src_id)
-            return (
-              <div key={r.id} className="row-item">
-                <span className="pill" style={{ borderColor: relColor(r.type), color: relColor(r.type) }}>{r.type}</span>
-                <span className="grow t">{other}</span>
-                <button className="icon-btn" title="删除关系"
-                  onClick={async () => { await api.del(`/relations/${r.id}`); await onChanged() }}>✕</button>
-              </div>
-            )
-          })}
+        <div key={k} className="pf-field">
+          <span className="lb">{k}</span>
+          <span className={`vl${k.includes('秘密') || k.includes('弧光') ? ' kai' : ''}`}>{v || '（待补）'}</span>
         </div>
-      )}
-    </div>
+      ))}
+      <div className="pf-duel">
+        <div className="cell"><b>表层动机</b>{char.surface_goal || '—'}</div>
+        <div className="cell"><b>深层需要</b>{char.deep_need || '—'}</div>
+      </div>
+      <div className="pf-field">
+        <span className="lb">关系（{rels.length}）</span>
+        {rels.length === 0 ? <span className="vl dim">暂无关系</span> : rels.map((r) => {
+          const other = `${r.src_kind}:${r.src_id}` === `char:${char.id}`
+            ? nameOf(r.dst_kind, r.dst_id) : nameOf(r.src_kind, r.src_id)
+          return (
+            <div key={r.id} className="row" style={{ padding: '4px 6px' }}>
+              <span className="tag" style={{ borderColor: relColor(r.type), color: relColor(r.type) }}>{r.type}</span>
+              <span className="r-main"><span className="r-t">{other}</span></span>
+              <button className="icon-btn" title="删除关系"
+                onClick={async () => { await api.del(`/relations/${r.id}`); await onChanged() }}>✕</button>
+            </div>
+          )
+        })}
+      </div>
+    </aside>
   )
 }
 

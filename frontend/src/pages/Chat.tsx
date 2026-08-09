@@ -1,4 +1,4 @@
-/* Agent 对话（M7 §9.2 页面 2）：会话管理 + SSE 流式 + 工具卡片（对齐 M3 §5 事件） */
+/* Agent 对话：会话管理 + SSE 流式 + 工具卡片（标记对齐参考模板） */
 import { useEffect, useRef, useState } from 'react'
 import { api, Project, sseStream } from '../api'
 import { Empty } from '../ui'
@@ -81,52 +81,66 @@ export default function ChatPage({ project }: { project: Project }) {
   }
 
   return (
-    <div className="chat-wrap" style={{ maxWidth: 860, margin: '0 auto' }}>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
-        <select className="select" style={{ width: 220 }} value={sid ?? ''}
-          onChange={(e) => setSid(+e.target.value)}>
-          <option value="">选择会话…</option>
-          {sessions.map((s) => <option key={s.id} value={s.id}>{s.title || `会话 ${s.id}`}</option>)}
-        </select>
-        <button className="btn sm" onClick={newSession}>＋ 新会话</button>
-        {sid != null && (
-          <button className="btn sm danger" onClick={async () => {
-            await api.del(`/sessions/${sid}`)
-            setSessions((cur) => cur.filter((s) => s.id !== sid))
-            setSid(null)
-          }}>删除会话</button>
-        )}
-      </div>
-
-      <div className="chat-msgs" ref={boxRef}>
-        {msgs.length === 0 && (
-          <Empty text={sessions.length === 0 ? '和助手聊聊你的故事' : '这个会话还是空的'}
-            actionText="新开一个会话" onAction={newSession} />
-        )}
-        {msgs.map((m, i) => (
-          <div key={i} className={`msg ${m.role === 'user' ? 'user' : 'ai'}`}>
-            <span className="avatar">{m.role === 'user' ? '我' : '墨'}</span>
-            <div className="bubble">
-              {(m.tools || []).map((t, j) => (
-                <div key={j} className="tool-card">
-                  <span className="name">{t.name}</span>{' '}
-                  {t.done ? '✓' : '⋯'}
-                  {t.result && <div className="hint" style={{ marginTop: 3 }}>{t.result}</div>}
+    <div className="chat-wrap">
+      <div className="chat-scroll" ref={boxRef}>
+        <div className="chat-inner">
+          {msgs.length === 0 && (
+            <Empty text={sessions.length === 0 ? '和助手聊聊你的故事' : '这个会话还是空的'}
+              actionText="新开一个会话" onAction={newSession} />
+          )}
+          {msgs.map((m, i) => (
+            <div key={i} className={`msg ${m.role === 'user' ? 'user' : 'ai'}`}>
+              <span className="avatar">{m.role === 'user' ? '我' : '墨'}</span>
+              <div className="bubble">
+                <div className="who">{m.role === 'user' ? '作者' : '墨案 · Agent'}</div>
+                {(m.tools || []).map((t, j) => (
+                  <div key={j} className="toolcard">
+                    <div className="tc-hd">
+                      <span className="tc-name">{t.name}</span>
+                      <span className="r-main" />
+                      <span className={`tc-state ${t.done ? 'done' : 'run'}`}>
+                        {t.done ? '✓ 完成' : <><span className="spinner" /> 调用中</>}
+                      </span>
+                    </div>
+                    {t.result && <div className="tc-result">{t.result}</div>}
+                  </div>
+                ))}
+                <div className="body">
+                  {m.content}
+                  {m.streaming && <span className="cursor" />}
                 </div>
-              ))}
-              <span className={m.streaming ? 'cursor-blink' : ''}>{m.content}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       <div className="chat-input">
-        <textarea className="input" rows={2} value={input} placeholder="描述你的想法…（Enter 发送，Shift+Enter 换行）"
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
-          }} />
-        <button className="btn primary" disabled={busy || !input.trim()} onClick={send}>落笔</button>
+        <div className="ci-box">
+          <textarea rows={2} value={input} placeholder="描述你的想法…（Enter 发送，Shift+Enter 换行）"
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
+            }} />
+          <button className="btn primary sm" disabled={busy || !input.trim()} onClick={send}>落笔</button>
+        </div>
+        <div className="ci-meta">
+          <select className="select" style={{ width: 200, padding: '3px 8px', fontSize: 12 }} value={sid ?? ''}
+            onChange={(e) => setSid(+e.target.value)}>
+            <option value="">选择会话…</option>
+            {sessions.map((s) => <option key={s.id} value={s.id}>{s.title || `会话 ${s.id}`}</option>)}
+          </select>
+          <button className="btn ghost sm" onClick={newSession}>＋ 新会话</button>
+          {sid != null && (
+            <button className="btn ghost sm danger" onClick={async () => {
+              await api.del(`/sessions/${sid}`)
+              setSessions((cur) => cur.filter((s) => s.id !== sid))
+              setSid(null)
+            }}>删除会话</button>
+          )}
+          <span className="grow" />
+          <span>AI 会检索本书设定与章节后作答</span>
+        </div>
       </div>
     </div>
   )

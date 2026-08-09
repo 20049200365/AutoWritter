@@ -15,11 +15,11 @@ const SPINE_COLORS = ['#40635c', '#7c5f8f', '#55504a', '#b98a45', '#a8433a', '#6
 
 const TABS = [
   { id: 'text', label: '正文' },
-  { id: 'chars', label: '人物' },
-  { id: 'outline', label: '大纲·伏笔' },
+  { id: 'chars', label: '人物关系' },
+  { id: 'outline', label: '大纲与伏笔' },
   { id: 'world', label: '世界观' },
-  { id: 'board', label: '时间线·看板' },
-  { id: 'chat', label: '对话' },
+  { id: 'board', label: '时间线与看板' },
+  { id: 'chat', label: 'Agent 对话' },
   { id: 'generate', label: '生成' },
   { id: 'skills', label: 'Skill' },
   { id: 'prefs', label: '偏好' },
@@ -42,7 +42,7 @@ export default function App() {
     api.get<Project[]>('/projects').then((ps) => {
       setProjects(ps)
       setActiveId((cur) => cur ?? ps[0]?.id ?? null)
-    }).catch(() => setToast({ text: '后端未连接：请先启动 python -m app（端口 8000）' }))
+    }).catch(() => setToast({ text: '后端未连接：请先双击 start.bat 启动（端口 8000）' }))
   }, [refresh])
 
   useEffect(() => {
@@ -51,9 +51,10 @@ export default function App() {
   }, [activeId, refresh])
 
   const active = projects.find((p) => p.id === activeId) || null
+  const activeIdx = active ? projects.indexOf(active) : 0
 
   async function deleteProject(p: Project) {
-    if (!confirm(`删除《${p.title}》？\n共 ${p.title ? '' : ''}该作品的全部数据将进入 5 秒撤销窗口。`)) return
+    if (!confirm(`删除《${p.title}》？\n该作品的全部数据将进入 5 秒撤销窗口。`)) return
     await api.del(`/projects/${p.id}`)
     setProjects((ps) => ps.filter((x) => x.id !== p.id))
     setToast({
@@ -67,66 +68,70 @@ export default function App() {
   }
 
   return (
-    <div className="layout">
-      {/* ---------- 全宽顶栏：品牌 + 作品 + 页签 + 数据条 ---------- */}
-      <header className="topbar">
+    <div id="app">
+      {/* ---------- 顶栏：品牌 + 作品 + 页签 + 数据条 ---------- */}
+      <header id="topbar">
         <div className="brand">
-          <span className="seal-logo">墨</span>
+          <span className="seal">墨</span>
           <b>墨案</b>
           <span className="sub">AI 创作工作台</span>
         </div>
-        {active && <span className="top-proj">{active.title}</span>}
         {active && (
-          <nav className="tabs">
-            {TABS.map((t) => (
-              <button key={t.id} className={`tab${tab === t.id ? ' on' : ''}`}
-                onClick={() => setTab(t.id)}>
-                {t.label}
-                {t.id === 'outline' && stats && stats.fspDangling > 0 &&
-                  <span className="badge">{stats.fspDangling}</span>}
-              </button>
-            ))}
-          </nav>
+          <span id="topProject">
+            <span className="genre-dot" style={{ background: SPINE_COLORS[activeIdx % SPINE_COLORS.length] }} />
+            {active.title}
+          </span>
         )}
+        <nav id="tabbar">
+          {TABS.map((t) => (
+            <button key={t.id} className={`tab${tab === t.id ? ' on' : ''}`}
+              onClick={() => setTab(t.id)}>
+              {t.label}
+              {t.id === 'outline' && stats && stats.fspDangling > 0 &&
+                <span className="badge">{stats.fspDangling}</span>}
+              {t.id === 'text' && stats && <span className="badge">{stats.written}/{stats.plan}</span>}
+            </button>
+          ))}
+        </nav>
         {stats && (
-          <span className="statstrip">
-            <span>总字数 <b>{stats.words.toLocaleString()}</b></span><i className="sep">|</i>
-            <span>章节 <b>{stats.written}/{stats.plan}</b></span><i className="sep">|</i>
-            <span>伏笔回收 <b>{stats.fspDone}/{stats.fsp}</b></span><i className="sep">|</i>
+          <span id="statstrip">
+            <span>总字数 <b>{stats.words.toLocaleString()}</b></span><span className="sep">|</span>
+            <span>章节 <b>{stats.written}/{stats.plan}</b></span><span className="sep">|</span>
+            <span>伏笔回收 <b>{stats.fspDone}/{stats.fsp}</b></span><span className="sep">|</span>
             <span>人物 <b>{stats.chars}</b></span>
           </span>
         )}
       </header>
 
-      <div className="cols">
+      <div id="cols">
         {/* ---------- 书架栏 ---------- */}
-        <aside className="col-shelf">
+        <aside id="colShelf">
           <div className="shelf-head">
             <span className="sh-title">书 架</span>
             <button className="icon-btn" title="新建作品" onClick={() => setShowNew(true)}>✚</button>
           </div>
           <div className="shelf-list">
             {projects.map((p, i) => (
-              <button key={p.id} className={`book${p.id === activeId ? ' on' : ''}`}
+              <button key={p.id} className={`shelf-item${p.id === activeId ? ' on' : ''}`}
                 onClick={() => setActiveId(p.id)} onContextMenu={(e) => { e.preventDefault(); deleteProject(p) }}>
                 <span className="spine" style={{ background: SPINE_COLORS[i % SPINE_COLORS.length] }}>
                   {p.title[0] || '书'}
                 </span>
-                <span className="meta">
-                  <span className="t">{p.title}</span>
-                  <span className="s">{p.genre} · {p.phase}</span>
+                <span className="si-body">
+                  <span className="si-title">{p.title}</span>
+                  <span className="si-sub">{p.genre} · {p.phase}</span>
                 </span>
               </button>
             ))}
             {projects.length === 0 && (
-              <Empty text="书架尚空" actionText="开一本书" onAction={() => setShowNew(true)} />
+              <Empty text="书架尚空，开一本书开始创作" actionText="开一本书" onAction={() => setShowNew(true)} />
             )}
           </div>
-          <div className="shelf-foot">右键书脊可删除<span className="kai">5 秒内可撤销</span></div>
+          <div className="shelf-foot">右键书脊可删除<span className="kai">5 秒内可撤销 · 数据存于本机</span></div>
         </aside>
 
         {/* ---------- 主区 ---------- */}
-        <main className="page">
+        <main id="colMain">
           {!active ? (
             <Empty text="先在左侧开一本书" actionText="新建作品" onAction={() => setShowNew(true)} />
           ) : tab === 'text' ? (
@@ -150,6 +155,7 @@ export default function App() {
           )}
         </main>
       </div>
+
       {showNew && (
         <NewProjectModal onClose={() => setShowNew(false)} onCreated={(id) => {
           setShowNew(false)
@@ -183,39 +189,38 @@ function NewProjectModal({ onClose, onCreated }: {
 
   return (
     <Modal title="开一本新书" onClose={onClose}>
-      <label className="field"><span>书名</span>
-        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例如：无锋" />
-      </label>
-      <label className="field"><span>题材</span>
-        <select className="select" value={genre} onChange={(e) => setGenre(e.target.value)}>
-          {GENRES.map((g) => <option key={g}>{g}</option>)}
-        </select>
-      </label>
-      <label className="field"><span>一句话简介</span>
-        <textarea className="input" rows={2} value={synopsis} onChange={(e) => setSynopsis(e.target.value)} />
-      </label>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <label className="field" style={{ flex: 1 }}><span>叙事人称</span>
-          <select className="select" value={pov} onChange={(e) => setPov(e.target.value)}>
+      <div className="f-row"><label>书名</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例如：无锋" />
+      </div>
+      <div className="f-grid">
+        <div className="f-row"><label>题材</label>
+          <select value={genre} onChange={(e) => setGenre(e.target.value)}>
+            {GENRES.map((g) => <option key={g}>{g}</option>)}
+          </select>
+        </div>
+        <div className="f-row"><label>叙事人称</label>
+          <select value={pov} onChange={(e) => setPov(e.target.value)}>
             {POVS.map((g) => <option key={g}>{g}</option>)}
           </select>
-        </label>
-        <label className="field" style={{ flex: 1 }}><span>目标字数</span>
-          <input className="input" type="number" value={target}
-            onChange={(e) => setTarget(+e.target.value)} />
-        </label>
+        </div>
       </div>
-      <label className="field"><span>基调（可多选）</span>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <div className="f-row"><label>一句话简介</label>
+        <textarea rows={2} value={synopsis} onChange={(e) => setSynopsis(e.target.value)} />
+      </div>
+      <div className="f-row"><label>目标字数</label>
+        <input type="number" value={target} onChange={(e) => setTarget(+e.target.value)} />
+      </div>
+      <div className="f-row"><label>基调（可多选）</label>
+        <div className="tone-pick">
           {TONES.map((t) => (
-            <button key={t} className={`pill${tones.includes(t) ? ' seal' : ''}`}
+            <button key={t} className={tones.includes(t) ? 'on' : ''}
               onClick={() => setTones((cur) => cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t])}>
               {t}
             </button>
           ))}
         </div>
-      </label>
-      <div className="actions">
+      </div>
+      <div className="m-acts">
         <button className="btn" onClick={onClose}>取消</button>
         <button className="btn primary" disabled={!title.trim()} onClick={submit}>开书</button>
       </div>

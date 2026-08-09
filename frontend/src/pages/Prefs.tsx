@@ -36,15 +36,16 @@ export default function PrefsPage({ project, onChanged }: {
   const rate: Record<string, number> = profile.rubric_weights || {}
 
   return (
-    <div className="page-pad grid cols-2" style={{ maxWidth: 1020, margin: '0 auto', width: '100%' }}>
+    <div className="out-wrap"><div className="out-inner" style={{ maxWidth: 1020 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
       <div>
-        <div className="card" style={{ marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <h2 className="h2" style={{ marginBottom: 0 }}>用户画像 v{profile.version}</h2>
-            <span className="pill" style={{ marginLeft: 8 }}>{profile.source === 'manual' ? '手动维护' : '自动蒸馏'}</span>
+        <div className="card">
+          <div className="hd">
+            <h3>用户画像 v{profile.version}</h3>
+            <span className="tag">{profile.source === 'manual' ? '手动维护' : '自动蒸馏'}</span>
             <span style={{ flex: 1 }} />
             {profile.snapshots.length > 0 && (
-              <select className="select" style={{ width: 130 }} value=""
+              <select className="select" style={{ width: 110, padding: '3px 8px', fontSize: 12 }} value=""
                 onChange={async (e) => {
                   if (!e.target.value) return
                   await api.post(`/preferences/${project.id}/rollback`, { version: +e.target.value })
@@ -55,6 +56,7 @@ export default function PrefsPage({ project, onChanged }: {
               </select>
             )}
           </div>
+          <div style={{ padding: 14 }}>
 
           <h3 style={{ fontSize: 13, margin: '12px 0 6px' }}>喜欢</h3>
           <TagList items={profile.likes} onRemove={(x) =>
@@ -72,7 +74,7 @@ export default function PrefsPage({ project, onChanged }: {
           {profile.hard_constraints.length === 0 ? <p className="hint">暂无（连续驳回同类问题 3 次会自动升级）</p> : (
             profile.hard_constraints.map((h, i) => (
               <p key={i} style={{ fontSize: 12.5, marginBottom: 4 }}>
-                <span className="pill seal">禁</span> {h}
+                <span className="tag seal">禁</span> {h}
               </p>
             ))
           )}
@@ -85,33 +87,34 @@ export default function PrefsPage({ project, onChanged }: {
               ))}
             </>
           )}
+          </div>
         </div>
       </div>
 
-      <div className="card">
-        <h2 className="h2">接受 / 驳回事件</h2>
+      <div className="card vol-card">
+        <div className="vol-hd"><span className="v-name">接受 / 驳回事件</span><span className="v-range">{events.length} 条</span></div>
         {events.length === 0 ? (
           <Empty text="还没有决策记录——去生成一章并裁决" />
         ) : (
-          <div className="row-list">
-            {[...events].reverse().map((e) => (
-              <div key={e.id} className="row-item">
-                <span className={`pill ${e.action === 'accept' ? 'leaf' : 'seal'}`}>
+          [...events].reverse().map((e) => (
+            <div key={e.id} className="fsp-row" style={{ gap: 4 }}>
+              <div className="fs-top">
+                <span className={`tag ${e.action === 'accept' ? 'lv' : 'seal'}`}>
                   {e.action === 'accept' ? '接受' : '驳回'}
                 </span>
-                <span className="grow">
-                  <span className="t">{(e.tags || []).join('、') || '—'}</span>
-                  {e.feedback && <span className="s" style={{ display: 'block' }}>{e.feedback}</span>}
-                </span>
-                <span className="mono hint" style={{ fontSize: 10 }}>
+                <span className="fs-name" style={{ fontWeight: 600, fontSize: 12.5 }}>{(e.tags || []).join('、') || '—'}</span>
+                <span style={{ flex: 1 }} />
+                <span className="mono" style={{ fontSize: 10, color: 'var(--ink3)' }}>
                   {new Date(e.created_at).toLocaleTimeString()}
                 </span>
               </div>
-            ))}
-          </div>
+              {e.feedback && <span className="fs-note">{e.feedback}</span>}
+            </div>
+          ))
         )}
       </div>
-    </div>
+      </div>
+    </div></div>
   )
 }
 
@@ -120,7 +123,7 @@ function TagList({ items, onRemove }: { items: string[]; onRemove: (x: string) =
   return (
     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
       {items.map((x) => (
-        <span key={x} className="pill" style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+        <span key={x} className="tag" style={{ gap: 4 }}>
           {x} <button className="icon-btn" style={{ padding: 0 }} onClick={() => onRemove(x)}>✕</button>
         </span>
       ))}

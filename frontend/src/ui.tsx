@@ -1,4 +1,4 @@
-/* 共享小组件：弹层 / Toast / 空态 */
+/* 共享小组件：弹层 / Toast / 空态（标记结构对齐参考模板） */
 import { ReactNode, useEffect, useState } from 'react'
 
 export function Modal({ title, children, onClose }: {
@@ -10,7 +10,7 @@ export function Modal({ title, children, onClose }: {
     return () => window.removeEventListener('keydown', fn)
   }, [onClose])
   return (
-    <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div className="mask" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="modal">
         <h3>{title}</h3>
         {children}
@@ -41,7 +41,8 @@ export function Empty({ text, actionText, onAction }: {
 }) {
   return (
     <div className="empty">
-      <span className="kai">{text}</span>
+      <span className="glyph">空</span>
+      <p className="kai">{text}</p>
       {actionText && <button className="btn primary" onClick={onAction}>{actionText}</button>}
     </div>
   )

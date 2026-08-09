@@ -1,10 +1,7 @@
-/* Skill 管理（M7 §9.2 页面 9）：列表 / 启停 / 注入点展示 */
+/* Skill 技能包（标记对齐参考模板）：题材写作惯例包，正文存于文件，可编辑后在此启停 */
 import { useEffect, useState } from 'react'
 import { api, Project, Skill } from '../api'
-
-const POINT_LABELS: Record<string, string> = {
-  world: '世界观', outline: '大纲', draft: '正文', review: '评审',
-}
+import { Empty } from '../ui'
 
 export default function SkillsPage({ project, onChanged }: {
   project: Project; onChanged: () => void
@@ -20,28 +17,28 @@ export default function SkillsPage({ project, onChanged }: {
   }
 
   return (
-    <div className="page-pad" style={{ maxWidth: 820, margin: '0 auto', width: '100%' }}>
-      <h2 className="h2">Skill 技能包</h2>
-      <p className="hint kai" style={{ marginBottom: 12 }}>
-        Skill 是题材写作惯例包，注入到生成与评审提示词。正文存于文件（{`~/.novelstudio/skills/`}），可直接编辑后在此页查看启停。
-      </p>
-      <div className="row-list">
-        {skills.map((s) => (
-          <div key={s.id} className="row-item">
-            <span className={`pill ${s.enabled ? 'leaf' : ''}`}>{s.enabled ? '启用' : '停用'}</span>
-            <span className="grow">
-              <span className="t">{s.name}{s.scope === 'project' && <span className="hint">（本项目）</span>}</span>
-              <span className="s" style={{ display: 'block' }}>
-                {s.genre ? `${s.genre} · ` : ''}注入：{s.inject_points.map((p) => POINT_LABELS[p] || p).join('、')} · v{s.version}
-              </span>
+    <div className="out-wrap"><div className="out-inner" style={{ maxWidth: 820 }}>
+      <div className="card vol-card">
+        <div className="vol-hd">
+          <span className="v-name">Skill 技能包</span>
+          <span className="v-sum">注入生成与评审提示词 · 正文存于 ~/.novelstudio/skills/，可直接编辑</span>
+        </div>
+        {skills.length === 0 ? (
+          <Empty text="还没有技能包" />
+        ) : skills.map((s) => (
+          <div key={s.id} className="ch-row">
+            <span className="ch-title">{s.name}</span>
+            <span className="ch-beat">
+              {s.genre ? `${s.genre} · ` : ''}{s.scope === 'global' ? '全局' : '本书'} · 注入点 {s.inject_points.join('/')}
             </span>
+            <span className={`tag ${s.enabled ? 'lv' : ''}`}>{s.enabled ? '启用' : '停用'}</span>
             <button className="btn sm" onClick={() => toggle(s)}>{s.enabled ? '停用' : '启用'}</button>
           </div>
         ))}
       </div>
-      <p className="hint" style={{ marginTop: 10 }}>
-        新增自定义 Skill：在 skills 目录建「目录名/skill.md」（frontmatter: name / inject_points），重启后自动加载。
-      </p>
-    </div>
+      <div className="notice">
+        Skill 是题材写作惯例包：写手与评审都会读。改文件即生效，版本自增。
+      </div>
+    </div></div>
   )
 }

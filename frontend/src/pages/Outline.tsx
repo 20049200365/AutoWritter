@@ -1,7 +1,9 @@
-/* 大纲与伏笔（M7 §9.2 页面 5）：三级树 CRUD + 伏笔四态追踪（回收纯用户驱动） */
+/* 大纲与伏笔：三级树（卷卡片）+ 伏笔四态追踪（标记对齐参考模板；回收纯用户驱动） */
 import { useEffect, useMemo, useState } from 'react'
-import { api, Chapter, CH_STATUS, Foreshadow, FSP_STATES, OutlineNode, Project } from '../api'
+import { api, Chapter, CH_STATUS, Foreshadow, OutlineNode, Project } from '../api'
 import { Empty, Modal } from '../ui'
+
+const FSP_TAG: Record<string, string> = { 已埋设: 'qing', 部分揭示: 'zhe', 已回收: 'lv', 悬空: 'seal' }
 
 export default function OutlinePage({ project, onChanged }: {
   project: Project; onChanged: () => void
@@ -22,7 +24,7 @@ export default function OutlinePage({ project, onChanged }: {
   }
   useEffect(() => { load() }, [project.id])
 
-  const roots = useMemo(() => nodes.filter((n) => n.parent_id === null), [nodes])
+  const roots = useMemo(() => nodes.filter((n) => n.parent_id === null).sort((a, b) => a.sort - b.sort), [nodes])
   const kids = (id: number) => nodes.filter((n) => n.parent_id === id).sort((a, b) => a.sort - b.sort)
 
   async function cycleStatus(n: OutlineNode) {
@@ -40,69 +42,73 @@ export default function OutlinePage({ project, onChanged }: {
 
   const done = fsps.filter((f) => f.state === '已回收').length
   const rate = fsps.length ? Math.round((done / fsps.length) * 100) : 0
+  const dangling = fsps.filter((f) => f.state === '悬空').length
 
   return (
-    <div className="page-pad grid cols-2" style={{ maxWidth: 1080, margin: '0 auto', width: '100%' }}>
-      {/* ---------- 大纲树 ---------- */}
-      <section className="card">
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-          <h2 className="h2" style={{ marginBottom: 0 }}>卷章结构</h2>
-          <span style={{ flex: 1 }} />
-          <button className="btn primary sm" onClick={() => setEditNode('new')}>＋ 卷/篇/节拍</button>
+    <div className="out-wrap">
+      <div className="out-inner">
+        {/* 统计卡 */}
+        <div className="statcards">
+          <div className="card statcard"><span className="sc-v">{roots.length}</span><span className="sc-l">卷</span></div>
+          <div className="card statcard"><span className="sc-v">{nodes.length}</span><span className="sc-l">大纲节点</span></div>
+          <div className="card statcard"><span className="sc-v">{chapters.length}</span><span className="sc-l">章节</span></div>
+          <div className={`card statcard${dangling > 0 ? ' warn' : ''}`}>
+            <span className="sc-v">{done}/{fsps.length}</span><span className="sc-l">伏笔回收（悬空 {dangling}）</span></div>
         </div>
+
+        {/* 卷章结构 */}
         {roots.length === 0 ? (
           <Empty text="大纲未立，先开一卷" actionText="建卷" onAction={() => setEditNode('new')} />
-        ) : (
-          <div>
-            {roots.sort((a, b) => a.sort - b.sort).map((v) => (
-              <div key={v.id} style={{ marginBottom: 8 }}>
-                <NodeRow node={v} chapters={chapters} onEdit={() => setEditNode(v)}
-                  onCycle={() => cycleStatus(v)} onRemove={() => removeNode(v)} />
-                {kids(v.id).map((s) => (
-                  <div key={s.id} style={{ marginLeft: 18 }}>
-                    <NodeRow node={s} chapters={chapters} onEdit={() => setEditNode(s)}
-                      onCycle={() => cycleStatus(s)} onRemove={() => removeNode(s)} />
-                    {kids(s.id).map((b) => (
-                      <div key={b.id} style={{ marginLeft: 18 }}>
-                        <NodeRow node={b} chapters={chapters} onEdit={() => setEditNode(b)}
-                          onCycle={() => cycleStatus(b)} onRemove={() => removeNode(b)} />
-                      </div>
-                    ))}
+        ) : roots.map((v) => (
+          <div key={v.id} className="card vol-card">
+            <div className="vol-hd">
+              <span className="v-name">{v.title}</span>
+              <span className="v-range">{kids(v.id).length} 篇</span>
+              <span className="v-sum">{v.summary || ''}</span>
+              <button className="icon-btn" title="编辑卷" onClick={() => setEditNode(v)}>✎</button>
+              <button className="icon-btn" title="加篇" onClick={() => setEditNode({ ...v, __new: 1 } as any)}>＋</button>
+              <button className="icon-btn" title="删除卷" onClick={() => removeNode(v)}>✕</button>
+            </div>
+            {kids(v.id).map((s) => (
+              <div key={s.id}>
+                <NodeRow node={s} chapters={chapters} onEdit={() => setEditNode(s)}
+                  onCycle={() => cycleStatus(s)} onRemove={() => removeNode(s)}
+                  onAdd={() => setEditNode({ ...s, __new: 1 } as any)} />
+                {kids(s.id).map((b) => (
+                  <div key={b.id} style={{ paddingLeft: 26 }}>
+                    <NodeRow node={b} chapters={chapters} onEdit={() => setEditNode(b)}
+                      onCycle={() => cycleStatus(b)} onRemove={() => removeNode(b)} />
                   </div>
                 ))}
               </div>
             ))}
           </div>
-        )}
-      </section>
+        ))}
+        <div><button className="btn" onClick={() => setEditNode('new')}>＋ 新卷</button></div>
 
-      {/* ---------- 伏笔追踪 ---------- */}
-      <section className="card">
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-          <h2 className="h2" style={{ marginBottom: 0 }}>伏笔追踪</h2>
-          <span style={{ flex: 1 }} />
-          <span className="mono hint" style={{ marginRight: 10 }}>回收率 {rate}%</span>
-          <button className="btn primary sm" onClick={() => setNewFsp(true)}>＋ 埋伏笔</button>
-        </div>
-        <div style={{ height: 6, background: 'var(--paper-2)', borderRadius: 3, marginBottom: 12 }}>
-          <div style={{ height: 6, width: `${rate}%`, background: 'var(--leaf)', borderRadius: 3 }} />
-        </div>
-        {fsps.length === 0 ? (
-          <Empty text="还没有伏笔" actionText="埋第一条" onAction={() => setNewFsp(true)} />
-        ) : (
-          <div className="row-list">
-            {fsps.map((f) => (
-              <FspRow key={f.id} fsp={f} chapters={chapters} onChanged={async () => { await load(); onChanged() }} />
-            ))}
+        {/* 伏笔追踪 */}
+        <div className="card vol-card">
+          <div className="vol-hd">
+            <span className="v-name">伏笔追踪</span>
+            <span className="v-range">回收率 {rate}%</span>
+            <span className="v-sum" />
+            <button className="btn sm primary" onClick={() => setNewFsp(true)}>＋ 埋伏笔</button>
           </div>
-        )}
-        <p className="hint kai" style={{ marginTop: 10 }}>
-          回收由你指定：点「回收」选择章节。AI 只提建议，不动状态。
-        </p>
-      </section>
+          {fsps.length === 0 ? (
+            <Empty text="还没有伏笔" actionText="埋第一条" onAction={() => setNewFsp(true)} />
+          ) : fsps.map((f) => (
+            <FspRow key={f.id} fsp={f} chapters={chapters} onChanged={async () => { await load(); onChanged() }} />
+          ))}
+          <div style={{ padding: 12 }}>
+            <div className="riskline info">回收由你指定：点「回收」选择章节。AI 只提建议，不动状态。</div>
+          </div>
+        </div>
+      </div>
 
       {editNode && (
-        <NodeModal project={project} node={editNode === 'new' ? null : editNode} roots={roots}
+        <NodeModal project={project} node={(editNode as any).__new ? null : editNode as OutlineNode}
+          presetParent={(editNode as any).__new ? (editNode as OutlineNode).id : undefined}
+          roots={roots}
           onClose={() => setEditNode(null)} onSaved={async () => { setEditNode(null); await load(); onChanged() }} />
       )}
       {newFsp && (
@@ -113,30 +119,32 @@ export default function OutlinePage({ project, onChanged }: {
   )
 }
 
-function NodeRow({ node, chapters, onEdit, onCycle, onRemove }: {
-  node: OutlineNode; chapters: Chapter[]; onEdit: () => void; onCycle: () => void; onRemove: () => void
+function NodeRow({ node, chapters, onEdit, onCycle, onRemove, onAdd }: {
+  node: OutlineNode; chapters: Chapter[]; onEdit: () => void; onCycle: () => void; onRemove: () => void; onAdd?: () => void
 }) {
   const linked = chapters.filter((c) => c.outline_node_id === node.id)
   return (
-    <div className="tree-node">
-      <span className={`lv${Math.min(node.level, 3)}`}>{node.title}</span>
-      <button className={`pill sm`} onClick={onCycle} title="点击循环切换状态">{node.status}</button>
-      {linked.map((c) => <span key={c.id} className="pill mono">CH.{String(c.seq).padStart(2, '0')}</span>)}
-      {node.summary && <span className="hint" style={{ fontSize: 11 }}>· {node.summary.slice(0, 24)}{node.summary.length > 24 ? '…' : ''}</span>}
-      <span style={{ flex: 1 }} />
-      <button className="icon-btn" onClick={onEdit} title="编辑">✎</button>
-      <button className="icon-btn" onClick={onRemove} title="删除">✕</button>
+    <div className="ch-row">
+      <span className="ch-title">{node.title}</span>
+      <span className="ch-beat">{node.summary || ''}</span>
+      {linked.map((c) => <span key={c.id} className="tag mono">CH.{String(c.seq).padStart(2, '0')}</span>)}
+      <button className="tag" onClick={onCycle} title="点击循环切换状态">{node.status}</button>
+      <span className="row-act" style={{ display: 'inline-flex', gap: 2 }}>
+        {onAdd && <button className="icon-btn" title="加子节点" onClick={onAdd}>＋</button>}
+        <button className="icon-btn" title="编辑" onClick={onEdit}>✎</button>
+        <button className="icon-btn" title="删除" onClick={onRemove}>✕</button>
+      </span>
     </div>
   )
 }
 
-function NodeModal({ project, node, roots, onClose, onSaved }: {
-  project: Project; node: OutlineNode | null; roots: OutlineNode[];
+function NodeModal({ project, node, presetParent, roots, onClose, onSaved }: {
+  project: Project; node: OutlineNode | null; presetParent?: number; roots: OutlineNode[];
   onClose: () => void; onSaved: () => void
 }) {
   const [title, setTitle] = useState(node?.title || '')
   const [summary, setSummary] = useState(node?.summary || '')
-  const [parentId, setParentId] = useState<number | ''>(node?.parent_id ?? '')
+  const [parentId, setParentId] = useState<number | ''>(node?.parent_id ?? presetParent ?? '')
 
   async function save() {
     if (!title.trim()) return
@@ -153,19 +161,21 @@ function NodeModal({ project, node, roots, onClose, onSaved }: {
 
   return (
     <Modal title={node ? `编辑节点：${node.title}` : '新建大纲节点'} onClose={onClose}>
-      <label className="field"><span>挂载到（不选=新卷）</span>
-        <select className="select" value={parentId} onChange={(e) => setParentId(e.target.value === '' ? '' : +e.target.value)}>
+      <div className="f-row"><label>挂载到（不选=新卷）</label>
+        <select value={parentId} onChange={(e) => setParentId(e.target.value === '' ? '' : +e.target.value)}>
           <option value="">—— 顶层（卷）——</option>
+          {presetParent != null && !roots.some((r) => r.id === presetParent) &&
+            <option value={presetParent}>（当前节点下）</option>}
           {roots.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
         </select>
-      </label>
-      <label className="field"><span>标题</span>
-        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
-      </label>
-      <label className="field"><span>概要 / 节拍</span>
-        <textarea className="input" rows={4} value={summary} onChange={(e) => setSummary(e.target.value)} />
-      </label>
-      <div className="actions">
+      </div>
+      <div className="f-row"><label>标题</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} />
+      </div>
+      <div className="f-row"><label>概要 / 节拍</label>
+        <textarea rows={4} value={summary} onChange={(e) => setSummary(e.target.value)} />
+      </div>
+      <div className="m-acts">
         <button className="btn" onClick={onClose}>取消</button>
         <button className="btn primary" disabled={!title.trim()} onClick={save}>保存</button>
       </div>
@@ -197,32 +207,35 @@ function FspRow({ fsp, chapters, onChanged }: {
   }
 
   return (
-    <div className="row-item">
-      <span className={`pill ${FSP_STATES[fsp.state] || ''}`}>{fsp.state}</span>
-      <span className="grow">
-        <span className="t">{'●'.repeat(fsp.importance)} {fsp.title}</span>
-        <span className="s" style={{ display: 'block' }}>
-          {plant ? `埋于 CH.${String(plant.seq).padStart(2, '0')}` : '未指定埋设章'}
-          {planned && ` → 计划 CH.${String(planned.seq).padStart(2, '0')} 回收`}
-          {actual && ` · 已于 CH.${String(actual.seq).padStart(2, '0')} 回收`}
-          {span != null && span > 12 && <span style={{ color: 'var(--ochre)' }}> ⚠ 跨度 {span} 章，注意读者遗忘</span>}
-        </span>
-      </span>
-      {fsp.state !== '已回收' ? (
-        resolving ? (
-          <select className="select" style={{ width: 140 }} autoFocus defaultValue=""
-            onChange={(e) => e.target.value && resolve(+e.target.value)}
-            onBlur={() => setResolving(false)}>
-            <option value="" disabled>选择回收章…</option>
-            {chapters.map((c) => <option key={c.id} value={c.id}>CH.{String(c.seq).padStart(2, '0')} {c.title}</option>)}
-          </select>
+    <div className="fsp-row">
+      <div className="fs-top">
+        <span className={`tag ${FSP_TAG[fsp.state] || ''}`}>{fsp.state}</span>
+        <span className="fs-name">{'●'.repeat(fsp.importance)} {fsp.title}</span>
+        <span style={{ flex: 1 }} />
+        {fsp.state !== '已回收' ? (
+          resolving ? (
+            <select className="select" style={{ width: 160, padding: '3px 8px', fontSize: 12 }} autoFocus defaultValue=""
+              onChange={(e) => e.target.value && resolve(+e.target.value)}
+              onBlur={() => setResolving(false)}>
+              <option value="" disabled>选择回收章…</option>
+              {chapters.map((c) => <option key={c.id} value={c.id}>CH.{String(c.seq).padStart(2, '0')} {c.title}</option>)}
+            </select>
+          ) : (
+            <button className="btn sm" onClick={() => setResolving(true)}>回收</button>
+          )
         ) : (
-          <button className="btn sm" onClick={() => setResolving(true)}>回收</button>
-        )
-      ) : (
-        <button className="btn sm" onClick={unresolve}>撤销回收</button>
-      )}
-      <button className="icon-btn" onClick={remove} title="删除">✕</button>
+          <button className="btn sm" onClick={unresolve}>撤销回收</button>
+        )}
+        <button className="icon-btn" onClick={remove} title="删除">✕</button>
+      </div>
+      {fsp.description && <span className="fs-note">{fsp.description}</span>}
+      <span className="fs-path">
+        {plant ? `埋于 CH.${String(plant.seq).padStart(2, '0')}` : '未指定埋设章'}
+        <span className="dots"><i className="f" /><i className={planned || actual ? 'f' : ''} /><i className={actual ? 'f' : ''} /></span>
+        {planned && `计划 CH.${String(planned.seq).padStart(2, '0')} 回收`}
+        {actual && ` · 已于 CH.${String(actual.seq).padStart(2, '0')} 回收`}
+        {span != null && span > 12 && <span className="tag zhe">跨度 {span} 章，注意读者遗忘</span>}
+      </span>
     </div>
   )
 }
@@ -249,32 +262,32 @@ function FspModal({ project, chapters, onClose, onSaved }: {
 
   return (
     <Modal title="埋伏笔" onClose={onClose}>
-      <label className="field"><span>名称</span>
-        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例如：剑灵来历" />
-      </label>
-      <label className="field"><span>描述</span>
-        <textarea className="input" rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} />
-      </label>
-      <label className="field"><span>重要度</span>
-        <select className="select" value={importance} onChange={(e) => setImportance(+e.target.value)}>
-          <option value={1}>● 一般</option><option value={2}>●● 重要</option><option value={3}>●●● 核心</option>
-        </select>
-      </label>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <label className="field" style={{ flex: 1 }}><span>埋设于</span>
-          <select className="select" value={plantedId} onChange={(e) => setPlantedId(e.target.value === '' ? '' : +e.target.value)}>
+      <div className="f-row"><label>名称</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例如：剑灵来历" />
+      </div>
+      <div className="f-row"><label>描述</label>
+        <textarea rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} />
+      </div>
+      <div className="f-grid">
+        <div className="f-row"><label>重要度</label>
+          <select value={importance} onChange={(e) => setImportance(+e.target.value)}>
+            <option value={1}>● 一般</option><option value={2}>●● 重要</option><option value={3}>●●● 核心</option>
+          </select>
+        </div>
+        <div className="f-row"><label>埋设于</label>
+          <select value={plantedId} onChange={(e) => setPlantedId(e.target.value === '' ? '' : +e.target.value)}>
             <option value="">未指定</option>
             {chapters.map((c) => <option key={c.id} value={c.id}>CH.{String(c.seq).padStart(2, '0')}</option>)}
           </select>
-        </label>
-        <label className="field" style={{ flex: 1 }}><span>计划回收章（不填=悬空）</span>
-          <select className="select" value={plannedId} onChange={(e) => setPlannedId(e.target.value === '' ? '' : +e.target.value)}>
-            <option value="">—— 悬空 ——</option>
-            {chapters.map((c) => <option key={c.id} value={c.id}>CH.{String(c.seq).padStart(2, '0')}</option>)}
-          </select>
-        </label>
+        </div>
       </div>
-      <div className="actions">
+      <div className="f-row"><label>计划回收章（不填=悬空）</label>
+        <select value={plannedId} onChange={(e) => setPlannedId(e.target.value === '' ? '' : +e.target.value)}>
+          <option value="">—— 悬空 ——</option>
+          {chapters.map((c) => <option key={c.id} value={c.id}>CH.{String(c.seq).padStart(2, '0')}</option>)}
+        </select>
+      </div>
+      <div className="m-acts">
         <button className="btn" onClick={onClose}>取消</button>
         <button className="btn primary" disabled={!title.trim()} onClick={save}>埋下</button>
       </div>

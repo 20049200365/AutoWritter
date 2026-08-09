@@ -1,4 +1,4 @@
-/* 正文（M7 §9.2 页面 3）：阅读态 + Tiptap 编辑态 + 划选改写对照卡片 + 版本留档 */
+/* 正文：阅读态 + Tiptap 编辑态 + 划选改写对照卡片 + 版本留档（标记对齐参考模板） */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -29,6 +29,15 @@ export default function TextPage({ project, onChanged, toast }: {
 
   const cur = chapters.find((c) => c.id === curId) || null
   const idx = chapters.findIndex((c) => c.id === curId)
+  const written = chapters.filter((c) => c.word_count > 0).length
+
+  // 当前章挂载的卷名（卷→…→节点链上的 level1 标题）
+  const volTag = useMemo(() => {
+    if (!cur?.outline_node_id) return ''
+    let n = outline.find((x) => x.id === cur.outline_node_id)
+    while (n && n.parent_id != null && n.level > 1) n = outline.find((x) => x.id === n!.parent_id)
+    return n && n.level === 1 ? n.title : ''
+  }, [cur, outline])
 
   async function newChapter() {
     const ch = await api.post<Chapter>('/chapters', {
@@ -40,10 +49,10 @@ export default function TextPage({ project, onChanged, toast }: {
   return (
     <div className="split">
       {/* 章目录（上下文栏） */}
-      <aside className="ctx-col">
+      <aside id="colCtx">
         <div className="ctx-hd">
           <h4>章 节</h4>
-          <button className="btn sm primary" onClick={newChapter}>＋ 新章</button>
+          <span className="dim mono">{written} 篇已写</span>
         </div>
         <div className="ctx-body">
           {chapters.map((c) => (
@@ -57,21 +66,27 @@ export default function TextPage({ project, onChanged, toast }: {
             </button>
           ))}
           {chapters.length === 0 && <Empty text="尚未落笔" actionText="开第一章" onAction={newChapter} />}
+          <div style={{ padding: '8px 10px' }}>
+            <button className="btn sm" onClick={newChapter}>＋ 开新章</button>
+          </div>
         </div>
       </aside>
 
       {/* 正文区 */}
-      <div className="page-main">
+      <div className="col-main-inner">
         {cur ? (
           <>
             <div className="text-top">
-              <h2>{cur.title}</h2>
+              {volTag && <span className="vol-tag">{volTag}</span>}
+              <h2>CH.{String(cur.seq).padStart(2, '0')} · {cur.title}</h2>
               <div className="seg">
                 <button className={mode === 'read' ? 'on' : ''} onClick={() => setMode('read')}>阅读</button>
                 <button className={mode === 'edit' ? 'on' : ''} onClick={() => setMode('edit')}>编辑</button>
               </div>
-              <span className="meta">{cur.word_count.toLocaleString()} 字 · {cur.status}</span>
-              <ChapterActions chapter={cur} outline={outline} onChanged={async () => { await load(); onChanged() }} />
+              <span className="meta">
+                {cur.word_count.toLocaleString()} 字 · {cur.status}
+                <ChapterActions chapter={cur} outline={outline} onChanged={async () => { await load(); onChanged() }} />
+              </span>
             </div>
             <div className="prose-scroll">
               {mode === 'read' ? (
@@ -84,7 +99,7 @@ export default function TextPage({ project, onChanged, toast }: {
             <div className="pager">
               <button className="btn sm" disabled={idx <= 0}
                 onClick={() => setCurId(chapters[idx - 1].id)}>← 上一章</button>
-              <span className="mono">CH.{String(cur.seq).padStart(2, '0')} · {idx + 1}/{chapters.length}</span>
+              <span className="pos">CH.{String(cur.seq).padStart(2, '0')} · {idx + 1}/{chapters.length}</span>
               <button className="btn sm" disabled={idx >= chapters.length - 1}
                 onClick={() => setCurId(chapters[idx + 1].id)}>下一章 →</button>
             </div>
@@ -114,12 +129,12 @@ function ChapterActions({ chapter, outline, onChanged }: {
 
   return (
     <>
-      <select className="select" style={{ width: 180 }} value={chapter.outline_node_id ?? ''}
+      <select className="select" style={{ width: 150 }} value={chapter.outline_node_id ?? ''}
         onChange={(e) => mount(e.target.value)} title="挂载大纲节点">
         <option value="">未挂载大纲</option>
         {leaves.map((n) => <option key={n.id} value={n.id}>{n.title}</option>)}
       </select>
-      <button className="pill" onClick={cycle} title="点击循环状态">{chapter.status}</button>
+      <button className="tag seal" onClick={cycle} title="点击循环状态">{chapter.status}</button>
     </>
   )
 }
@@ -129,26 +144,20 @@ function ReadView({ chapter }: { chapter: Chapter }) {
   const paras = useMemo(() => (chapter.text || '').split(/\n+/).filter(Boolean), [chapter.text])
   if (!chapter.text) {
     return (
-      <div className="prose-wrap">
-        <Empty text="本章尚无正文" actionText="去生成工作台起草" onAction={() => {}} />
+      <div className="prose">
+        <Empty text="本章尚无正文" />
         {chapter.plan && (
-          <div className="card" style={{ marginTop: 14 }}>
+          <div className="card" style={{ marginTop: 14, padding: 14 }}>
             <h3 style={{ fontSize: 13 }}>细纲</h3>
-            <p className="kai" style={{ whiteSpace: 'pre-wrap', marginTop: 6 }}>{chapter.plan}</p>
+            <p className="kai" style={{ whiteSpace: 'pre-wrap', marginTop: 6, textIndent: 0 }}>{chapter.plan}</p>
           </div>
         )}
       </div>
     )
   }
   return (
-    <div className="prose-wrap">
-      <div className="prose-head">
-        <h2>{chapter.title}</h2>
-        <div className="meta">{chapter.word_count.toLocaleString()} 字 · {chapter.status}</div>
-      </div>
-      <div className="prose">
-        {paras.map((p, i) => <p key={i}>{p}</p>)}
-      </div>
+    <div className="prose">
+      {paras.map((p, i) => <p key={i}>{p}</p>)}
     </div>
   )
 }
@@ -183,8 +192,7 @@ function EditView({ chapter, toast, onSaved }: {
   async function save() {
     if (!editor) return
     setSaving(true)
-    const text = editor.state.doc.content.toJSON()
-      ? editor.getText({ blockSeparator: '\n' }) : ''
+    const text = editor.getText({ blockSeparator: '\n' })
     await api.post(`/chapters/${chapter.id}/commit`, { text, source: 'human' })
     setSaving(false)
     toast({ text: '已保存为新版本' })
@@ -221,27 +229,22 @@ function EditView({ chapter, toast, onSaved }: {
   const liveCount = editor.getText().replace(/\s/g, '').length
 
   return (
-    <div style={{ position: 'relative', padding: '18px 22px', maxWidth: 900, margin: '0 auto', width: '100%' }}>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
-        <button className="btn primary sm" disabled={saving} onClick={save}>{saving ? '保存中…' : '保存（留版本）'}</button>
-        <span className="hint mono">编辑区 {liveCount} 字（章总字数以保存后为准）</span>
-      </div>
-
+    <div className="edit-wrap" style={{ position: 'relative' }}>
       {selBar && !diff && (
-        <div className="sel-bar" style={{ left: selBar.x, top: selBar.y }}>
+        <div className="selbar" style={{ left: selBar.x, top: selBar.y }}>
           {OPS.map((op) => <button key={op} onClick={() => runRewrite(op)}>{op}</button>)}
           <button onClick={() => setSelBar(null)}>✕</button>
         </div>
       )}
 
       {diff && (
-        <div className="diff-card">
-          <strong>AI 改写对照</strong>
-          <div className="cols">
-            <div>{diff.original}</div>
-            <div className="new">{diff.result}</div>
+        <div className="card diffcard">
+          <div className="dc-lb"><b>AI 改写对照</b><span className="dim">左原右新，采纳后替换选中段</span></div>
+          <div className="dc-row">
+            <div className="dc-cell">{diff.original}</div>
+            <div className="dc-cell after">{diff.result}</div>
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <div className="dc-acts">
             <button className="btn sm" onClick={() => setDiff(null)}>放弃</button>
             <button className="btn sm" onClick={() => runRewrite('润色')}>再来一次</button>
             <button className="btn sm primary" onClick={acceptDiff}>采纳替换</button>
@@ -249,7 +252,12 @@ function EditView({ chapter, toast, onSaved }: {
         </div>
       )}
 
-      <div className="card" style={{ minHeight: 300 }}>
+      <div className="edit-status">
+        <button className="btn primary sm" disabled={saving} onClick={save}>{saving ? '保存中…' : '保存（留版本）'}</button>
+        <span className="mono">编辑区 {liveCount} 字</span>
+        <span className="dim">章总字数以保存后为准</span>
+      </div>
+      <div className="edit-shell">
         <EditorContent editor={editor} />
       </div>
     </div>
