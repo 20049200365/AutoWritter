@@ -248,7 +248,7 @@ export default function GeneratePage({ project, onChanged }: {
       )}
 
       {!stage && chapters.length === 0 && (
-        <Empty glyph="稿" text="先在正文页开一章，再回来生成" />
+        <Empty text="先在正文页开一章，再回来生成" />
       )}
     </div></div>
   )

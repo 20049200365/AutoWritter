@@ -94,7 +94,7 @@ export default function PrefsPage({ project, onChanged }: {
       <div className="card vol-card">
         <div className="vol-hd"><span className="v-name">接受 / 驳回事件</span><span className="v-range">{events.length} 条</span></div>
         {events.length === 0 ? (
-          <Empty glyph="裁" text="还没有决策记录——去生成一章并裁决" />
+          <Empty text="还没有决策记录——去生成一章并裁决" />
         ) : (
           [...events].reverse().map((e) => (
             <div key={e.id} className="fsp-row" style={{ gap: 4 }}>

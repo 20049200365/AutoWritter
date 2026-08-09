@@ -49,7 +49,7 @@ export default function WorldPage({ project, onChanged }: {
       {/* 卡片网格 */}
       <div className="col-main-inner" style={{ overflowY: 'auto' }}>
         {shown.length === 0 ? (
-          <Empty glyph="设" text="这一类还没有设定" actionText="写第一条" onAction={() => setEditing('new')} />
+          <Empty text="这一类还没有设定" actionText="写第一条" onAction={() => setEditing('new')} />
         ) : (
           <div className="world-grid">
             {shown.map((e) => (

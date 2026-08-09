@@ -24,7 +24,7 @@ export default function SkillsPage({ project, onChanged }: {
           <span className="v-sum">注入生成与评审提示词 · 正文存于 ~/.novelstudio/skills/，可直接编辑</span>
         </div>
         {skills.length === 0 ? (
-          <Empty glyph="技" text="还没有技能包" />
+          <Empty text="还没有技能包" />
         ) : skills.map((s) => (
           <div key={s.id} className="ch-row">
             <span className="ch-title">{s.name}</span>

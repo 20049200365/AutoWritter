@@ -148,7 +148,7 @@ export default function App() {
               </button>
             ))}
             {projects.length === 0 && (
-              <Empty glyph="架" text="书架尚空，开一本书开始创作" actionText="开一本书" onAction={() => setShowNew(true)} />
+              <Empty text="书架尚空，开一本书开始创作" actionText="开一本书" onAction={() => setShowNew(true)} />
             )}
           </div>
           <div className="shelf-foot">
@@ -164,7 +164,7 @@ export default function App() {
               onOpen={(id) => { setActiveId(id); setTab('text') }}
               onDelete={setDelTarget} onNew={() => setShowNew(true)} />
           ) : !active ? (
-            <Empty glyph="书" text="先在左侧开一本书" sub="每一部长篇都是从一行简介开始的。"
+            <Empty text="先在左侧开一本书" sub="每一部长篇都是从一行简介开始的。"
               actionText="新建作品" onAction={() => setShowNew(true)} />
           ) : tab === 'text' ? (
             <TextPage project={active} onChanged={bump} toast={setToast} initialChapter={jump.ch} jumpSeq={jump.n}
@@ -225,7 +225,7 @@ function ShelfMain({ projects, stats, activeId, onOpen, onDelete, onNew }: {
 }) {
   if (projects.length === 0) {
     return (
-      <Empty glyph="架" text="书架空了。每一部长篇都是从一行简介开始的。"
+      <Empty text="书架空了。每一部长篇都是从一行简介开始的。"
         actionText="新建第一部作品" onAction={onNew} />
     )
   }

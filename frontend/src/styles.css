@@ -127,10 +127,6 @@ body::before{
   display:flex;flex-direction:column;align-items:center;gap:12px;padding:46px 20px;
   color:var(--ink3);text-align:center;
 }
-.empty .glyph{
-  width:52px;height:52px;border-radius:14px;background:var(--sub);border:1px dashed var(--line2);
-  display:flex;align-items:center;justify-content:center;font-family:var(--kai);font-size:24px;color:var(--ink3);
-}
 .empty p{max-width:340px;font-size:13px}
 .empty .kai{font-size:13px}
 /* 空态作为主区唯一内容时垂直居中，避免贴顶悬浮感 */
