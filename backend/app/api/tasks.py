@@ -1,12 +1,13 @@
-"""任务与生成路由（M6 SPEC §2.6）：薄层，查询/取消走 TaskQueryRepo。"""
+"""任务、生成、对话、改写路由（M6 SPEC §2.6）。"""
 import json
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from ..agent.pipeline import ChapterPipeline
-from ..data.repos import TaskQueryRepo
+from ..agent.chat import ChatAgent, RewriteService
+from ..agent.pipeline import ChapterPipeline, sse_event
+from ..data.repos import ChapterRepo, NotFound, SessionRepo, TaskQueryRepo
 from ..api.deps import get_uow
 
 router = APIRouter(tags=["tasks"])
@@ -84,3 +85,50 @@ def list_tasks(chapter_id: int | None = None, status: str | None = None, uow=Dep
 @router.get("/tasks/{task_id}")
 def get_task(task_id: int, uow=Depends(get_uow)):
     return TaskQueryRepo(uow).get_dict(task_id)
+
+
+@router.get("/tasks/{task_id}/stream")
+async def task_stream(task_id: int, uow=Depends(get_uow)):
+    """SSE 重连：推全量快照（snapshot）后续流；当前实现为一次性快照。"""
+    t = TaskQueryRepo(uow).get_dict(task_id)
+
+    async def _gen():
+        ev = sse_event("snapshot", {"task_id": t["id"], "status": t["status"],
+                                    "text": t["draft_text"] or "",
+                                    "plan": (t["plan"] or {}).get("beats"),
+                                    "review": t["review"]})
+        yield f"event: {ev['event']}\ndata: {json.dumps(ev['data'], ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(_gen(), media_type="text/event-stream")
+
+
+class RewriteBody(BaseModel):
+    start: int
+    end: int
+    op: str = "润色"
+    instruction: str | None = None
+
+
+class ChatBody(BaseModel):
+    text: str
+
+
+@router.post("/chapters/{chapter_id}/rewrite")
+async def rewrite(chapter_id: int, body: RewriteBody, request: Request,
+                  uow=Depends(get_uow)):
+    if ChapterRepo(uow).get(chapter_id) is None:            # 流前预校验（D3）
+        raise NotFound(f"chapters#{chapter_id} 不存在")
+    svc = RewriteService(request.app.state.session_factory, request.app.state.provider)
+    return StreamingResponse(
+        _sse(svc.rewrite(chapter_id, body.start, body.end, body.op, body.instruction)),
+        media_type="text/event-stream")
+
+
+@router.post("/sessions/{session_id}/chat")
+async def chat(session_id: int, body: ChatBody, request: Request,
+               uow=Depends(get_uow)):
+    if not SessionRepo(uow).exists(session_id):             # 流前预校验（D3）
+        raise NotFound(f"chat_sessions#{session_id} 不存在")
+    agent = ChatAgent(request.app.state.session_factory, request.app.state.provider)
+    return StreamingResponse(
+        _sse(agent.chat(session_id, body.text)), media_type="text/event-stream")

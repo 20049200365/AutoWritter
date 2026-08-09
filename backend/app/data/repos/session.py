@@ -16,6 +16,9 @@ class SessionRepo(BaseRepo):
     dto = None  # 会话 DTO 由 M6 装配层定义（本模块暂不冻结）
 
     # ---- 会话/消息查询（供 M6 路由，避免路由层直连 ORM）----
+    def exists(self, session_id: int) -> bool:
+        return self.s.get(ChatSession, session_id) is not None
+
     def sessions(self, project_id: int) -> list[dict]:
         rows = self.s.scalars(
             select(ChatSession).where(ChatSession.project_id == project_id,

@@ -13,12 +13,7 @@ log = logging.getLogger("m6.stubs")
 
 router = APIRouter()
 
-_STUBS = [
-    # （方法, 路径, 等待模块）—— search/tasks/preferences 均已实现（M2/M3/M5）
-    ("POST", "/sessions/{session_id}/chat", "M3 对话 Agent（SSE）"),
-    ("POST", "/chapters/{chapter_id}/rewrite", "M3 划选改写（SSE）"),
-    ("GET", "/tasks/{task_id}/stream", "M3 SSE 重连"),
-]
+_STUBS = []  # M2/M3/M5 全部路由已实现，无剩余占位端点
 
 
 def _stub(method: str, path: str, waiting_for: str):

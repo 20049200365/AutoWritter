@@ -134,9 +134,13 @@ def test_suggestion_api_flow(client):
 
 # ---------- 占位端点：501 ----------
 
-def test_stubs_return_501(client):
-    r = client.post("/sessions/1/chat", json={"text": "你好"})   # M3 对话未落地，仍为占位
-    assert r.status_code == 501 and r.json()["code"] == "not_implemented"
+def test_no_stubs_remain_and_stream_precheck(client):
+    # 占位端点已全部转正：不存在的会话对话返回 404（流前预校验，非 501）
+    from app.api.stubs import _STUBS
+    assert _STUBS == []
+    assert client.post("/sessions/999/chat", json={"text": "你好"}).status_code == 404
+    assert client.post("/chapters/999/rewrite",
+                       json={"start": 0, "end": 1}).status_code == 404
 
 
 def test_preferences_404_for_missing_project(client):
