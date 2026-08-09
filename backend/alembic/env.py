@@ -10,7 +10,7 @@ from alembic import context
 # 使 backend/ 可导入（alembic 从 backend/ 目录运行）
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.config import settings  # noqa: E402
+from app.config import Settings  # noqa: E402
 from app.data.models import Base  # noqa: E402
 
 # this is the Alembic Config object, which provides
@@ -22,9 +22,13 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# 数据库地址取自配置（~/.novelstudio/novel.db），不写死在 alembic.ini
-settings.ensure_dirs()
-config.set_main_option("sqlalchemy.url", f"sqlite:///{settings.db_path}")
+
+def _set_url() -> None:
+    """每次迁移时新建 Settings：避免模块单例缓存旧的 DATA_DIR（多环境/测试隔离）。"""
+    settings = Settings()
+    settings.ensure_dirs()
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{settings.db_path}")
+
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -48,6 +52,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
+    _set_url()
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -67,6 +72,7 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    _set_url()
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

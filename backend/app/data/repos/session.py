@@ -15,6 +15,31 @@ class SessionRepo(BaseRepo):
     model = ChatSession
     dto = None  # 会话 DTO 由 M6 装配层定义（本模块暂不冻结）
 
+    # ---- 会话/消息查询（供 M6 路由，避免路由层直连 ORM）----
+    def sessions(self, project_id: int) -> list[dict]:
+        rows = self.s.scalars(
+            select(ChatSession).where(ChatSession.project_id == project_id,
+                                      ChatSession.deleted_at.is_(None))
+            .order_by(ChatSession.id))
+        return [{"id": r.id, "project_id": r.project_id, "title": r.title,
+                 "created_at": r.created_at, "updated_at": r.updated_at} for r in rows]
+
+    def create_session(self, project_id: int, title: str | None = None) -> dict:
+        obj = ChatSession(project_id=project_id, title=title)
+        self.s.add(obj)
+        self.s.flush()
+        self.log.info("创建会话 id=%s project=%s", obj.id, project_id)
+        return {"id": obj.id, "project_id": obj.project_id, "title": obj.title}
+
+    def messages(self, session_id: int) -> list[dict]:
+        rows = self.s.scalars(
+            select(ChatMessage).where(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.seq))
+        return [{"id": m.id, "role": m.role, "content": m.content, "seq": m.seq,
+                 "thinking": m.thinking, "tool_calls": m.tool_calls, "refs": m.refs,
+                 "suggestion": m.suggestion, "suggestion_status": m.suggestion_status,
+                 "created_at": m.created_at} for m in rows]
+
     # ---- 建议消息 ----
     def add_suggestion(self, session_id: int, payload: dict, seq: int | None = None) -> int:
         """M8 写入建议消息。payload = {type,title,detail,evidence,target}。"""
