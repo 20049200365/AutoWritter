@@ -8,9 +8,11 @@ from .project import ProjectRepo
 from .relation import RelationRepo
 from .session import SessionRepo
 from .skill import SkillRepo
+from .task import TaskQueryRepo
 
 __all__ = [
     "BaseRepo", "RepoError", "NotFound", "StateConflict",
     "ProjectRepo", "OutlineRepo", "ChapterRepo", "ForeshadowRepo", "RelationRepo",
     "CharacterRepo", "WorldEntryRepo", "TimelineEventRepo", "SkillRepo", "SessionRepo",
+    "TaskQueryRepo",
 ]

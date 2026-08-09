@@ -135,7 +135,7 @@ def test_suggestion_api_flow(client):
 # ---------- 占位端点：501 ----------
 
 def test_stubs_return_501(client):
-    r = client.get("/tasks")                       # M3 未落地，仍为占位端点
+    r = client.get("/preferences/1")                 # M5 未落地，仍为占位端点
     assert r.status_code == 501 and r.json()["code"] == "not_implemented"
 
 

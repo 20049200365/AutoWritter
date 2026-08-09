@@ -14,16 +14,9 @@ log = logging.getLogger("m6.stubs")
 router = APIRouter()
 
 _STUBS = [
-    # （方法, 路径, 等待模块）
+    # （方法, 路径, 等待模块）—— tasks/* 与 search 已实现（M2/M3）
     ("POST", "/sessions/{session_id}/chat", "M3 对话 Agent（SSE）"),
-    ("POST", "/chapters/{chapter_id}/generate", "M3 单章流水线（SSE）"),
     ("POST", "/chapters/{chapter_id}/rewrite", "M3 划选改写（SSE）"),
-    ("GET", "/tasks", "M3 任务列表"),
-    ("GET", "/tasks/{task_id}", "M3 任务详情（含账本）"),
-    ("POST", "/tasks/{task_id}/confirm-plan", "M3 细纲确认"),
-    ("POST", "/tasks/{task_id}/decide", "M3 接受/驳回"),
-    ("POST", "/tasks/{task_id}/cancel", "M3 停止生成"),
-    ("POST", "/tasks/{task_id}/resume", "M3 续跑"),
     ("GET", "/tasks/{task_id}/stream", "M3 SSE 重连"),
     ("GET", "/preferences/{project_id}", "M5 画像读取"),
     ("PUT", "/preferences/{project_id}", "M5 画像手动修正"),
