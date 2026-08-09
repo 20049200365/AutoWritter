@@ -89,7 +89,7 @@ export default function App() {
               {t.label}
               {t.id === 'outline' && stats && stats.fspDangling > 0 &&
                 <span className="badge">{stats.fspDangling}</span>}
-              {t.id === 'text' && stats && <span className="badge">{stats.written}/{stats.plan}</span>}
+              {t.id === 'text' && stats && stats.plan > 0 && <span className="badge">{stats.written}/{stats.plan}</span>}
             </button>
           ))}
         </nav>

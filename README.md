@@ -104,8 +104,9 @@ npm run build                             # 构建（产物由后端托管）
 
 ```powershell
 # 仓库根目录
-backend\.venv\Scripts\python -m pytest backend\tests -q        # 90 项全绿
-backend\.venv\Scripts\python backend\tools\real_smoke.py       # 真模型全链路冒烟（消耗少量 token）
+cd backend
+.venv\Scripts\python -m pytest tests -q        # 90 项全绿（需在 backend 目录下跑）
+.venv\Scripts\python tools\real_smoke.py       # 真模型全链路冒烟（消耗少量 token）
 ```
 
 测试全部使用 FakeProvider（预录回复），零 API 成本；真模型验证通过 `real_smoke.py` 单独执行。
