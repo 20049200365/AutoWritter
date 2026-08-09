@@ -1,0 +1,68 @@
+<!-- 封面方案 A · 宣纸落印：米色纸纹底，墨晕扩散，题字逐字写出，朱印作落款盖在标题右下角 -->
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8"/>
+<title>封面方案 A · 宣纸落印</title>
+<style>
+:root{--paper:#f6f1e6;--ink:#2f2a22;--ink2:#5c5548;--ink3:#8d8574;--seal:#a8433a;--line2:#d3c7aa;
+--kai:"Kaiti SC","STKaiti","KaiTi",serif;--serif:"Songti SC","STSong","Noto Serif SC","SimSun",serif}
+*{margin:0;box-sizing:border-box}html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);overflow:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.38;mix-blend-mode:multiply;
+background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E")}
+#cover{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;transition:opacity .9s ease}
+.blot{position:absolute;left:50%;top:50%;width:560px;height:560px;border-radius:50%;
+transform:translate(-50%,-50%) scale(0);
+background:radial-gradient(circle,rgba(47,42,34,.15) 0%,rgba(47,42,34,.06) 42%,transparent 70%);
+animation:blot 1.6s .1s ease-out forwards}
+@keyframes blot{to{transform:translate(-50%,-50%) scale(1)}}
+.stage{position:relative;display:flex;flex-direction:column;align-items:center;gap:16px}
+.title-wrap{position:relative}
+h1{font-family:var(--kai);font-size:56px;font-weight:400;letter-spacing:.18em;display:flex}
+h1 span{opacity:0;animation:up .7s ease forwards}
+h1 span:nth-child(1){animation-delay:.5s}
+h1 span:nth-child(2){animation-delay:.85s}
+/* 印不作等重 logo，作题字落款：小一号、手写微倾，字写完后才盖下 */
+.seal{position:absolute;right:-54px;bottom:-6px;width:40px;height:40px;border-radius:8px;background:var(--seal);
+color:#f6f1e6;font-family:var(--kai);font-size:22px;display:flex;align-items:center;justify-content:center;
+box-shadow:0 4px 12px rgba(168,67,58,.35);opacity:0;transform:scale(1.8) rotate(-14deg);
+animation:stamp .5s 1.35s cubic-bezier(.2,1.4,.4,1) forwards}
+@keyframes stamp{to{opacity:1;transform:scale(1) rotate(6deg)}}
+.sub{font-size:13px;letter-spacing:.5em;text-indent:.5em;color:var(--ink3);opacity:0;animation:up .8s 1.7s ease forwards}
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.slogan{position:absolute;right:7vw;top:50%;transform:translateY(-50%);writing-mode:vertical-rl;
+font-family:var(--kai);font-size:20px;letter-spacing:.4em;color:var(--ink2)}
+.slogan span{opacity:0;animation:up .6s ease forwards}
+.enter{margin-top:26px;padding:10px 34px;border:1px solid var(--line2);border-radius:999px;
+font-family:var(--kai);font-size:15px;letter-spacing:.3em;text-indent:.3em;color:var(--ink2);
+cursor:pointer;opacity:0;animation:up .8s 2.05s ease forwards;transition:.25s}
+.enter:hover{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+#next{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+font-family:var(--kai);font-size:15px;color:var(--ink3);letter-spacing:.2em}
+</style>
+</head>
+<body>
+<div id="cover">
+  <div class="blot"></div>
+  <div class="stage">
+    <div class="title-wrap">
+      <h1><span>墨</span><span>案</span></h1>
+      <div class="seal">墨</div>
+    </div>
+    <div class="sub">AI 创作工作台</div>
+    <button class="enter" onclick="enter()">进入书架</button>
+  </div>
+  <div class="slogan" id="slogan"></div>
+</div>
+<div id="next">正在进入书架……（demo 占位）</div>
+<script>
+const txt='笔落处，世界开';
+const el=document.getElementById('slogan');
+[...txt].forEach((c,i)=>{const s=document.createElement('span');s.textContent=c;
+s.style.animationDelay=(1.9+i*.12)+'s';el.appendChild(s)});
+function enter(){const c=document.getElementById('cover');c.style.opacity='0';
+setTimeout(()=>{c.style.display='none';document.getElementById('next').style.display='flex'},900)}
+</script>
+</body>
+</html>

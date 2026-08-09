@@ -8,31 +8,34 @@ import OutlinePage from './pages/Outline'
 import WorldPage from './pages/World'
 import BoardPage from './pages/Board'
 import ChatPage from './pages/Chat'
+import Splash from './Splash'
 import GeneratePage from './pages/Generate'
 import SkillsPage from './pages/Skills'
 import PrefsPage from './pages/Prefs'
 
 const SPINE_COLORS = ['#40635c', '#7c5f8f', '#55504a', '#b98a45', '#a8433a', '#6f8f62']
 
-const TABS = [
-  { id: 'shelf', label: '书架' },
+/* 工作台右区内容页签（书架升为独立 stage，对话左常驻不占页签） */
+const WORK_TABS = [
   { id: 'text', label: '正文' },
   { id: 'chars', label: '人物关系' },
   { id: 'outline', label: '大纲与伏笔' },
   { id: 'world', label: '世界观' },
   { id: 'board', label: '时间线与看板' },
-  { id: 'chat', label: 'Agent 对话' },
   { id: 'generate', label: '生成' },
   { id: 'skills', label: 'Skill' },
   { id: 'prefs', label: '偏好' },
 ] as const
 
-type TabId = typeof TABS[number]['id']
+type TabId = typeof WORK_TABS[number]['id']
 
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([])
   const [activeId, setActiveId] = useState<number | null>(null)
-  const [tab, setTab] = useState<TabId>('shelf')
+  /* 三级流程：封面 → 书架 → 工作台（左对话常驻 + 右内容切换） */
+  const [stage, setStage] = useState<'cover' | 'shelf' | 'work'>('cover')
+  const [tab, setTab] = useState<TabId>('text')
+  const [chatFold, setChatFold] = useState(false)
   const [stats, setStats] = useState<Stats | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [delTarget, setDelTarget] = useState<Project | null>(null)
@@ -90,34 +93,44 @@ export default function App() {
 
   return (
     <div id="app">
-      {/* ---------- 顶栏：品牌 + 作品 + 页签 + 数据条 ---------- */}
+      {stage === 'cover' ? (
+        <Splash onEnter={() => setStage('shelf')} />
+      ) : (
+        <>
+      {/* ---------- 顶栏：品牌（点回书架） + 页签 + 数据条 ---------- */}
       <header id="topbar">
-        <div className="brand">
+        <button className="brand" title="回到书架" onClick={() => setStage('shelf')}>
           <span className="seal">墨</span>
           <b>墨案</b>
           <span className="sub">AI 创作工作台</span>
-        </div>
-        {active && (
+        </button>
+        {stage === 'work' && active && (
           <span id="topProject">
             <span className="genre-dot" style={{ background: SPINE_COLORS[activeIdx % SPINE_COLORS.length] }} />
             {active.title}
           </span>
         )}
-        <button className="icon-btn ctx-toggle" title="展开 / 收起上下文栏"
-          onClick={() => document.body.classList.toggle('ctx-open')}>☰</button>
-        <nav id="tabbar">
-          {TABS.map((t) => (
-            <button key={t.id} className={`tab${tab === t.id ? ' on' : ''}`}
-              onClick={() => setTab(t.id)}>
-              {t.label}
-              {t.id === 'outline' && stats && stats.fspDangling > 0 &&
-                <span className="badge">{stats.fspDangling}</span>}
-              {t.id === 'text' && stats && stats.plan > 0 && <span className="badge">{stats.written}/{stats.plan}</span>}
-              {t.id === 'chat' && stats && stats.sessions > 0 && <span className="badge">{stats.sessions}</span>}
-            </button>
-          ))}
-        </nav>
-        {stats && (
+        {stage === 'work' && (
+          <button className="icon-btn ctx-toggle" title="展开 / 收起上下文栏"
+            onClick={() => document.body.classList.toggle('ctx-open')}>☰</button>
+        )}
+        {stage === 'work' ? (
+          <nav id="tabbar">
+            <button className="tab" onClick={() => setStage('shelf')}>书架</button>
+            {WORK_TABS.map((t) => (
+              <button key={t.id} className={`tab${tab === t.id ? ' on' : ''}`}
+                onClick={() => setTab(t.id)}>
+                {t.label}
+                {t.id === 'outline' && stats && stats.fspDangling > 0 &&
+                  <span className="badge">{stats.fspDangling}</span>}
+                {t.id === 'text' && stats && stats.plan > 0 && <span className="badge">{stats.written}/{stats.plan}</span>}
+              </button>
+            ))}
+          </nav>
+        ) : (
+          <span className="grow" />
+        )}
+        {stage === 'work' && stats && (
           <span id="statstrip">
             <span>总字数 <b>{stats.words.toLocaleString()}</b></span><span className="sep">|</span>
             <span>章节 <b>{stats.written}/{stats.plan}</b></span><span className="sep">|</span>
@@ -125,79 +138,78 @@ export default function App() {
             <span>人物 <b>{stats.chars}</b></span>
           </span>
         )}
+        {stage === 'shelf' && (
+          <button className="btn primary sm" onClick={() => setShowNew(true)}>＋ 开新书</button>
+        )}
       </header>
 
       <div id="cols">
-        {/* ---------- 书架栏 ---------- */}
-        <aside id="colShelf">
-          <div className="shelf-head">
-            <span className="sh-title">书 架</span>
-            <button className="icon-btn" title="新建作品" onClick={() => setShowNew(true)}>✚</button>
-          </div>
-          <div className="shelf-list">
-            {projects.map((p, i) => (
-              <button key={p.id} className={`shelf-item${p.id === activeId ? ' on' : ''}`}
-                onClick={() => setActiveId(p.id)} onContextMenu={(e) => { e.preventDefault(); setDelTarget(p) }}>
-                <span className="spine" style={{ background: SPINE_COLORS[i % SPINE_COLORS.length] }}>
-                  {p.title[0] || '书'}
-                </span>
-                <span className="si-body">
-                  <span className="si-title">{p.title}</span>
-                  <span className="si-sub">{p.genre} · {p.phase}</span>
-                </span>
-              </button>
-            ))}
-            {projects.length === 0 && (
-              <Empty text="书架尚空，开一本书开始创作" actionText="开一本书" onAction={() => setShowNew(true)} />
-            )}
-          </div>
-          <div className="shelf-foot">
-            右键书脊可删除<span className="kai">5 秒内可撤销 · 数据存于本机</span>
-            <span className="kai">按 <kbd>Ctrl</kbd>+<kbd>K</kbd> 全局检索</span>
-          </div>
-        </aside>
-
-        {/* ---------- 主区 ---------- */}
-        <main id="colMain">
-          {tab === 'shelf' ? (
+        {stage === 'shelf' ? (
+          /* ---------- 书架页（独立 stage，全屏宽） ---------- */
+          <main id="colMain">
             <ShelfMain projects={projects} stats={stats} activeId={activeId}
-              onOpen={(id) => { setActiveId(id); setTab('text') }}
+              onOpen={(id) => { setActiveId(id); setStage('work'); setTab('text') }}
               onDelete={setDelTarget} onNew={() => setShowNew(true)} />
-          ) : !active ? (
-            <Empty text="先在左侧开一本书" sub="每一部长篇都是从一行简介开始的。"
-              actionText="新建作品" onAction={() => setShowNew(true)} />
-          ) : tab === 'text' ? (
-            <TextPage project={active} onChanged={bump} toast={setToast} initialChapter={jump.ch} jumpSeq={jump.n}
-              onGotoOutline={() => setTab('outline')} />
-          ) : tab === 'chars' ? (
-            <CharsPage project={active} onChanged={bump} />
-          ) : tab === 'outline' ? (
-            <OutlinePage project={active} onChanged={bump} />
-          ) : tab === 'world' ? (
-            <WorldPage project={active} onChanged={bump} />
-          ) : tab === 'board' ? (
-            <BoardPage project={active} stats={stats} gotoChapter={(id) => {
-              setJump((cur) => ({ ...cur, ch: id, n: cur.n + 1 }))
-              setTab('text')
-            }} />
-          ) : tab === 'chat' ? (
-            <ChatPage project={active} stats={stats} onChanged={bump} initialSession={jump.ses} jumpSeq={jump.n} />
-          ) : tab === 'generate' ? (
-            <GeneratePage project={active} onChanged={bump} />
-          ) : tab === 'skills' ? (
-            <SkillsPage project={active} onChanged={bump} />
-          ) : (
-            <PrefsPage project={active} onChanged={bump} />
-          )}
-        </main>
+          </main>
+        ) : (
+          <>
+            {/* ---------- 左常驻 Agent 对话（可折叠） ---------- */}
+            {chatFold ? (
+              <button id="chat-unfold" title="展开 Agent 对话" onClick={() => setChatFold(false)}>Agent 对话</button>
+            ) : (
+              <aside id="colChat">
+                <div className="chat-hd">
+                  <span className="ch-t">Agent 对话</span>
+                  <span className="grow" />
+                  <button className="icon-btn" title="收起对话面板" onClick={() => setChatFold(true)}>»</button>
+                </div>
+                {active ? (
+                  <ChatPage project={active} stats={stats} onChanged={bump} initialSession={jump.ses} jumpSeq={jump.n} />
+                ) : (
+                  <Empty text="先在左侧开一本书" sub="Agent 需要一部作品来围绕。"
+                    actionText="去书架" onAction={() => setStage('shelf')} />
+                )}
+              </aside>
+            )}
+            {/* ---------- 右内容区 ---------- */}
+            <main id="colMain">
+              {!active ? (
+                <Empty text="先在左侧开一本书" sub="每一部长篇都是从一行简介开始的。"
+                  actionText="去书架" onAction={() => setStage('shelf')} />
+              ) : tab === 'text' ? (
+                <TextPage project={active} onChanged={bump} toast={setToast} initialChapter={jump.ch} jumpSeq={jump.n}
+                  onGotoOutline={() => setTab('outline')} />
+              ) : tab === 'chars' ? (
+                <CharsPage project={active} onChanged={bump} />
+              ) : tab === 'outline' ? (
+                <OutlinePage project={active} onChanged={bump} />
+              ) : tab === 'world' ? (
+                <WorldPage project={active} onChanged={bump} />
+              ) : tab === 'board' ? (
+                <BoardPage project={active} stats={stats} gotoChapter={(id) => {
+                  setJump((cur) => ({ ...cur, ch: id, n: cur.n + 1 }))
+                  setTab('text')
+                }} />
+              ) : tab === 'generate' ? (
+                <GeneratePage project={active} onChanged={bump} />
+              ) : tab === 'skills' ? (
+                <SkillsPage project={active} onChanged={bump} />
+              ) : (
+                <PrefsPage project={active} onChanged={bump} />
+              )}
+            </main>
+          </>
+        )}
       </div>
+        </>
+      )}
 
       {showNew && (
         <NewProjectModal onClose={() => setShowNew(false)} onCreated={(id) => {
           setShowNew(false)
           bump()
           setActiveId(id)
-          setTab('chat')
+          setStage('work')
         }} />
       )}
       {delTarget && (
@@ -208,9 +220,13 @@ export default function App() {
         <Palette projects={projects} onClose={() => setPaletteOpen(false)}
           nav={{
             project: (id) => setActiveId(id),
-            tab: (t) => setTab(t as TabId),
-            openChapter: (id) => { setJump((cur) => ({ ...cur, ch: id, n: cur.n + 1 })); setTab('text') },
-            openSession: (id) => { setJump((cur) => ({ ...cur, ses: id, n: cur.n + 1 })); setTab('chat') },
+            tab: (t) => {
+              if (t === 'shelf') { setStage('shelf'); return }
+              if (t === 'chat') { setStage('work'); setChatFold(false); return }
+              setTab(t as TabId); setStage('work')
+            },
+            openChapter: (id) => { setJump((cur) => ({ ...cur, ch: id, n: cur.n + 1 })); setTab('text'); setStage('work') },
+            openSession: (id) => { setJump((cur) => ({ ...cur, ses: id, n: cur.n + 1 })); setStage('work'); setChatFold(false) },
           }} />
       )}
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, mdToHtml, Project, Session, sseStream, Stats, stripMd } from '../api'
 import { on } from '../bus'
-import { Empty } from '../ui'
 
 interface Tool { name: string; args?: string; result?: string; done: boolean; open: boolean }
 interface Msg {
@@ -29,7 +28,6 @@ export default function ChatPage({ project, stats, onChanged, initialSession, ju
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
-  const [query, setQuery] = useState('')
   const boxRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -157,41 +155,24 @@ export default function ChatPage({ project, stats, onChanged, initialSession, ju
     abortRef.current?.abort()
   }
 
-  const shown = query ? sessions.filter((s) => (s.title || '').includes(query)) : sessions
+  const sorted = [...sessions].sort((a, b) => (b.updated_at || b.created_at || '').localeCompare(a.updated_at || a.created_at || ''))
   const cur = sessions.find((s) => s.id === sid) || null
 
   return (
-    <div className="split">
-      {/* ---------- 会话上下文栏 ---------- */}
-      <aside id="colCtx">
-        <div className="ctx-hd">
-          <h4>会 话</h4>
-          <button className="icon-btn" title="新建会话" onClick={() => newSession()}>✚</button>
-        </div>
-        <div className="ctx-search">
-          <input placeholder="搜索会话…" value={query} onChange={(e) => setQuery(e.target.value)} />
-        </div>
-        <div className="ctx-body">
-          {shown.length === 0 ? (
-            <Empty text={query ? '没有匹配的会话' : '还没有会话'}
-              actionText={query ? undefined : '开始第一段对话'} onAction={() => newSession()} />
-          ) : [...shown].sort((a, b) => (b.updated_at || b.created_at || '').localeCompare(a.updated_at || a.created_at || '')).map((s) => (
-            <div key={s.id} className={`row${s.id === sid ? ' on' : ''}`} onClick={() => setSid(s.id)}>
-              <span className="r-main">
-                <span className="r-t">{s.title || `会话 ${s.id}`}</span>
-                <span className="r-s">{(s.updated_at || s.created_at || '').slice(0, 16)}</span>
-              </span>
-              <button className="icon-btn row-act" title="删除会话"
-                onClick={(e) => { e.stopPropagation(); delSession(s.id) }}>✕</button>
-            </div>
-          ))}
-        </div>
-      </aside>
+    <div className="chat-panel">
+      {/* 会话切换条（紧凑单列，供左常驻面板使用） */}
+      <div className="cp-bar">
+        <select value={sid ?? ''} onChange={(e) => setSid(e.target.value === '' ? null : +e.target.value)}>
+          {sorted.length === 0 && <option value="">还没有会话</option>}
+          {sorted.map((s) => <option key={s.id} value={s.id}>{s.title || `会话 ${s.id}`}</option>)}
+        </select>
+        <button className="icon-btn" title="新建会话" onClick={() => newSession()}>✚</button>
+        {sid != null && <button className="icon-btn" title="删除当前会话" onClick={() => delSession(sid)}>✕</button>}
+      </div>
 
       {/* ---------- 消息区 ---------- */}
-      <div className="col-main-inner">
-        <div className="chat-wrap">
-          <div className="chat-scroll" ref={boxRef}>
+      <div className="chat-wrap">
+        <div className="chat-scroll" ref={boxRef}>
             <div className="chat-inner">
               {msgs.length === 0 && (
                 <div className="notice kai" style={{ fontSize: 13 }}>
@@ -246,7 +227,6 @@ export default function ChatPage({ project, stats, onChanged, initialSession, ju
           </div>
         </div>
       </div>
-    </div>
   )
 }
 
