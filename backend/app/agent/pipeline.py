@@ -169,28 +169,40 @@ class ChapterPipeline:
     async def _review(self, task_id: int, draft: str, plan_text: str) -> dict:
         with UnitOfWork(self.factory) as uow:
             task = self._task(uow, task_id)
-            messages = [
-                {"role": "system", "content":
-                    "你是小说评审。输出 JSON：{\"scores\":{五维:0-10},\"overall\":0-10,"
-                    "\"issues\":[{\"level\":\"高|中|低\",\"type\":\"\",\"detail\":\"\"}],"
-                    "\"revision_suggestions\":[]}"},
-                {"role": "user", "content": f"细纲：\n{plan_text}\n\n草稿：\n{draft}"},
-            ]
+            base_prompt = (
+                "你是小说评审。只输出纯 JSON，不要 markdown 围栏、不要解释，必须含五维 scores："
+                "{\"scores\":{\"情节连贯\":0-10,\"人物一致性\":0-10,\"伏笔照应\":0-10,"
+                "\"节奏\":0-10,\"文风贴合\":0-10},\"overall\":0-10,"
+                "\"issues\":[{\"level\":\"高|中|低\",\"type\":\"\",\"detail\":\"\"}],"
+                "\"revision_suggestions\":[]}")
+            user_prompt = f"细纲：\n{plan_text}\n\n草稿：\n{draft}"
+            messages = [{"role": "system", "content": base_prompt},
+                        {"role": "user", "content": user_prompt}]
         raw = await collect(self.provider.chat("reviewer", messages, temperature=0.2))
         review = self._parse_review(raw)
-        if review is None:  # schema 失败自动重请一次（M3 §3.2）
-            log.warning("评审输出不合契约，重请 task=%s", task_id)
+        if review is None:  # schema 失败自动重请一次（M3 §3.2），附更严格要求
+            log.warning("评审输出不合契约，重请 task=%s raw_head=%r", task_id, raw[:200])
+            messages.append({"role": "assistant", "content": raw})
+            messages.append({"role": "user", "content":
+                             "上次输出不合要求。请重新只输出纯 JSON（无围栏无解释），含全部五维 scores。"})
             raw = await collect(self.provider.chat("reviewer", messages, temperature=0.2))
             review = self._parse_review(raw)
         if review is None:
+            log.error("评审两次不合契约 task=%s raw=%r", task_id, raw[:500])
             raise StateConflict(f"评审输出两次不合契约 task={task_id}")
         return review
 
     @staticmethod
     def _parse_review(raw: str) -> dict | None:
         try:
-            start, end = raw.find("{"), raw.rfind("}")
-            data = json.loads(raw[start:end + 1])
+            text = raw.strip()
+            if "```" in text:                       # 容错：markdown 围栏
+                segs = text.split("```")
+                text = next((s.strip() for s in segs
+                             if s.strip().startswith("json") or s.strip().startswith("{")), text)
+                text = text.removeprefix("json").strip()
+            start, end = text.find("{"), text.rfind("}")
+            data = json.loads(text[start:end + 1])
             scores = data.get("scores") or {}
             if not all(dim in scores for dim in REVIEW_DIMENSIONS):
                 return None
