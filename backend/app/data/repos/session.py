@@ -109,5 +109,7 @@ class SessionRepo(BaseRepo):
                 fsp.state = "已埋设"
         elif stype == "timeline_event":
             self.s.add(TimelineEvent(**target))
+        elif stype == "outline_check":
+            pass  # 提醒类建议：采纳=已读，无写入动作（M8 大纲对账）
         else:
             raise StateConflict(f"未知建议类型: {stype}")

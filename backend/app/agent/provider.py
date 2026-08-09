@@ -50,6 +50,20 @@ class ProviderLayer:
                 yield {"type": "delta", "text": delta}
         yield {"type": "done"}
 
+    def chat_sync(self, role: str, messages: list[dict], temperature: float = 0.7) -> str:
+        """同步非流式调用（M8 同步流水线专用）。"""
+        import litellm
+        model = self.model_of(role)
+        log.info("LLM 同步调用 role=%s model=%s", role, model)
+        resp = litellm.completion(
+            model=f"openai/{model}",
+            api_base=self.settings.deepseek_base_url,
+            api_key=self.settings.deepseek_api_key,
+            messages=messages,
+            temperature=temperature,
+        )
+        return resp.choices[0].message.content or ""
+
 
 class FakeProvider(ProviderLayer):
     """预录回复：按消息中的标记词路由到固定输出（确定性，可断言）。
@@ -89,6 +103,22 @@ class FakeProvider(ProviderLayer):
     @staticmethod
     def _split(text: str, size: int = 24) -> list[str]:
         return [text[i:i + size] for i in range(0, len(text), size)] or [""]
+
+    def chat_sync(self, role: str, messages: list[dict], temperature: float = 0.7) -> str:
+        joined = " ".join(str(m.get("content", "")) for m in messages)
+        reply = self.fallback
+        for marker, content in self.canned.items():
+            if marker in joined:
+                if isinstance(content, list):
+                    i = self._counters.get(marker, 0)
+                    reply = content[i % len(content)]
+                    self._counters[marker] = i + 1
+                else:
+                    reply = content
+                break
+        self.calls.append({"role": role, "marker_hit": reply[:20], "n_msgs": len(messages),
+                           "sync": True})
+        return reply
 
 
 async def collect(agen: AsyncIterator[dict]) -> str:

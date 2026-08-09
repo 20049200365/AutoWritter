@@ -9,9 +9,10 @@ from fastapi import FastAPI
 from .api import chapters, entities, outline, projects, search, sessions, skills, stubs, system, tasks
 from .api.deps import register_error_handlers, register_request_logging
 from .config import REPO_ROOT, Settings
+from .agent.postprocess import PostProcessor
 from .agent.provider import ProviderLayer
 from .data.db import make_engine, make_session_factory
-from .data.events import bus
+from .data.events import CHAPTER_ACCEPTED, bus
 from .logging_utils import setup_logging
 from .search.service import ensure_fts_table
 from .search.wiring import register_index_subscribers
@@ -45,6 +46,15 @@ def create_app() -> FastAPI:
     app.state.provider = ProviderLayer(settings)  # 测试可替换为 FakeProvider（B10）
 
     register_index_subscribers(bus, app.state.session_factory)
+
+    def _on_chapter_accepted(payload: dict) -> None:  # M8 后处理入口（架构 §5.4）
+        try:
+            PostProcessor(app.state.session_factory, app.state.provider).run_for_chapter(
+                payload["chapter_id"], payload.get("task_id"))
+        except Exception:  # noqa: BLE001 - 后处理失败不阻塞主流程，可手动重跑
+            logging.getLogger("m8.wiring").exception("后处理异常 chapter=%s", payload.get("chapter_id"))
+
+    bus.subscribe(CHAPTER_ACCEPTED, _on_chapter_accepted, key="m8.accepted")
     register_error_handlers(app)
     register_request_logging(app)
 
