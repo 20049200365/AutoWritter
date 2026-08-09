@@ -89,7 +89,8 @@ export default function CharsPage({ project, onChanged }: {
           <button className="btn primary sm" onClick={() => setEditChar('new')}>＋ 人物</button>
         </div>
         {chars.length === 0 ? (
-          <Empty text="人物谱尚空" actionText="立第一个人" onAction={() => setEditChar('new')} />
+          <Empty glyph="人" text="人物谱尚空" sub="先登记主角——他想要什么、怕什么、和谁对立，关系图会自动长出来。"
+            actionText="＋ 立第一个人" onAction={() => setEditChar('new')} />
         ) : (
           <Graph nodes={nodes} links={links} selected={selected} onSelect={setSelected} />
         )}

@@ -62,7 +62,8 @@ export default function OutlinePage({ project, onChanged }: {
 
         {/* 卷章结构 */}
         {roots.length === 0 ? (
-          <Empty text="大纲未立，先开一卷" actionText="建卷" onAction={() => setEditNode('new')} />
+          <Empty glyph="纲" text="大纲未立" sub="卷是全书的骨架，章节与伏笔都挂在卷上。先开第一卷，再逐卷拆章。"
+            actionText="＋ 开第一卷" onAction={() => setEditNode('new')} />
         ) : roots.map((v) => (
           <div key={v.id} className="card vol-card">
             <div className="vol-hd">
@@ -88,7 +89,7 @@ export default function OutlinePage({ project, onChanged }: {
             ))}
           </div>
         ))}
-        <div><button className="btn" onClick={() => setEditNode('new')}>＋ 新卷</button></div>
+        {roots.length > 0 && <div><button className="btn" onClick={() => setEditNode('new')}>＋ 新卷</button></div>}
 
         {/* 伏笔追踪 */}
         <div className="card vol-card">
@@ -99,7 +100,7 @@ export default function OutlinePage({ project, onChanged }: {
             <button className="btn sm primary" onClick={() => setNewFsp(true)}>＋ 埋伏笔</button>
           </div>
           {fsps.length === 0 ? (
-            <Empty text="还没有伏笔" actionText="埋第一条" onAction={() => setNewFsp(true)} />
+            <Empty glyph="伏" text="还没有伏笔" sub="伏笔埋在章节、也要在章节回收——读者的期待要有落点。点右上角「＋ 埋伏笔」开始。" />
           ) : fsps.map((f) => (
             <FspRow key={f.id} fsp={f} chapters={chapters} onChanged={async () => { await load(); onChanged() }} />
           ))}

@@ -133,6 +133,8 @@ body::before{
 }
 .empty p{max-width:340px;font-size:13px}
 .empty .kai{font-size:13px}
+/* 空态作为主区唯一内容时垂直居中，避免贴顶悬浮感 */
+.col-main-inner>.empty:only-child,#colMain>.empty:only-child,.out-inner>.empty:only-child,.graphbox>.empty:only-child{flex:1;justify-content:center}
 kbd{
   font-family:var(--mono);font-size:11px;background:var(--sub);border:1px solid var(--line2);
   border-bottom-width:2px;border-radius:5px;padding:1px 5px;color:var(--ink2);

@@ -36,14 +36,23 @@ export function Toast({ msg, onDone }: { msg: ToastMsg; onDone: () => void }) {
   )
 }
 
-export function Empty({ text, actionText, onAction }: {
-  text: string; actionText?: string; onAction?: () => void
+/* 空态：glyph 按语境取字（架/章/人/纲/伏/话…），sub 为二级引导，双按钮给双路径 */
+export function Empty({ text, sub, glyph = '空', actionText, onAction, action2Text, onAction2 }: {
+  text: string; sub?: string; glyph?: string
+  actionText?: string; onAction?: () => void
+  action2Text?: string; onAction2?: () => void
 }) {
   return (
     <div className="empty">
-      <span className="glyph">空</span>
+      <span className="glyph">{glyph}</span>
       <p className="kai">{text}</p>
-      {actionText && <button className="btn primary" onClick={onAction}>{actionText}</button>}
+      {sub && <p style={{ fontSize: 12, maxWidth: 360 }}>{sub}</p>}
+      {(actionText || action2Text) && (
+        <div style={{ display: 'flex', gap: 10 }}>
+          {action2Text && <button className="btn" onClick={onAction2}>{action2Text}</button>}
+          {actionText && <button className="btn primary" onClick={onAction}>{actionText}</button>}
+        </div>
+      )}
     </div>
   )
 }

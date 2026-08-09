@@ -54,7 +54,7 @@ export default function BoardPage({ project, stats, gotoChapter }: {
 
   if (!events.length && !chapters.length && !leaves.length) {
     return (
-      <Empty text="还没有时间线事件，看板也没有数据可算。写了章节、埋了伏笔之后，这里会自动长出来。" />
+      <Empty glyph="轨" text="还没有时间线事件，看板也没有数据可算。写了章节、埋了伏笔之后，这里会自动长出来。" />
     )
   }
 
@@ -64,7 +64,7 @@ export default function BoardPage({ project, stats, gotoChapter }: {
       <aside id="colCtx">
         <div className="ctx-hd"><h4>时间线轨道</h4></div>
         <div className="ctx-body">
-          {tracks.length === 0 && <Empty text="暂无轨道" />}
+          {tracks.length === 0 && <Empty glyph="轨" text="暂无轨道" />}
           {tracks.map((t, i) => (
             <div key={t} className="row" style={{ cursor: 'default' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flex: 1 }}>

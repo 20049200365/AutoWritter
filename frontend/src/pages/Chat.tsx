@@ -173,7 +173,7 @@ export default function ChatPage({ project, stats, onChanged, initialSession, ju
         </div>
         <div className="ctx-body">
           {shown.length === 0 ? (
-            <Empty text={query ? '没有匹配的会话' : '还没有会话'}
+            <Empty glyph="话" text={query ? '没有匹配的会话' : '还没有会话'}
               actionText={query ? undefined : '开始第一段对话'} onAction={() => newSession()} />
           ) : [...shown].sort((a, b) => (b.updated_at || b.created_at || '').localeCompare(a.updated_at || a.created_at || '')).map((s) => (
             <div key={s.id} className={`row${s.id === sid ? ' on' : ''}`} onClick={() => setSid(s.id)}>

@@ -8,9 +8,9 @@ import { Empty, Modal, ToastMsg } from '../ui'
 
 const OPS = ['润色', '精简', '扩写', '改人称'] as const
 
-export default function TextPage({ project, onChanged, toast, initialChapter, jumpSeq }: {
+export default function TextPage({ project, onChanged, toast, initialChapter, jumpSeq, onGotoOutline }: {
   project: Project; onChanged: () => void; toast: (t: ToastMsg) => void
-  initialChapter?: number; jumpSeq?: number
+  initialChapter?: number; jumpSeq?: number; onGotoOutline?: () => void
 }) {
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [outline, setOutline] = useState<OutlineNode[]>([])
@@ -84,7 +84,11 @@ export default function TextPage({ project, onChanged, toast, initialChapter, ju
               </span>
             </button>
           ))}
-          {chapters.length === 0 && <Empty text="尚未落笔" actionText="开第一章" onAction={newChapter} />}
+          {chapters.length === 0 && (
+            <Empty glyph="章" text="还没有章节" sub={onGotoOutline ? '先排大纲，再落笔' : undefined}
+              actionText={onGotoOutline ? '去排大纲' : '开第一章'}
+              onAction={onGotoOutline ?? newChapter} />
+          )}
           <div style={{ padding: '8px 10px' }}>
             <button className="btn sm" onClick={newChapter}>＋ 开新章</button>
           </div>
@@ -118,7 +122,7 @@ export default function TextPage({ project, onChanged, toast, initialChapter, ju
                 cur.text ? <ReadView chapter={cur} /> : (
                   /* 空章态：大纲节拍 + 起草入口（对齐参考模板） */
                   <div className="prose">
-                    <Empty text="本章尚无正文" />
+                    <Empty glyph="章" text="本章尚无正文" />
                     {cur.plan && (
                       <div className="card" style={{ marginTop: 14, padding: 14 }}>
                         <h3 style={{ fontSize: 13 }}>细纲</h3>
@@ -150,7 +154,10 @@ export default function TextPage({ project, onChanged, toast, initialChapter, ju
             </div>
           </>
         ) : (
-          <Empty text="先开一章" actionText="开第一章" onAction={newChapter} />
+          <Empty glyph="章" text={`《${project.title}》还没有章节`}
+            sub="先排大纲再落笔，或直接写下第一行。"
+            actionText="✎ 写第一章" onAction={newChapter}
+            action2Text={onGotoOutline ? '去排大纲' : undefined} onAction2={onGotoOutline} />
         )}
       </div>
     </div>
