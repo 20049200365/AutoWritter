@@ -20,7 +20,7 @@ export default function SkillsPage({ project, onChanged }: {
   }
 
   return (
-    <div style={{ maxWidth: 760, margin: '0 auto' }}>
+    <div className="page-pad" style={{ maxWidth: 820, margin: '0 auto', width: '100%' }}>
       <h2 className="h2">Skill 技能包</h2>
       <p className="hint kai" style={{ marginBottom: 12 }}>
         Skill 是题材写作惯例包，注入到生成与评审提示词。正文存于文件（{`~/.novelstudio/skills/`}），可直接编辑后在此页查看启停。

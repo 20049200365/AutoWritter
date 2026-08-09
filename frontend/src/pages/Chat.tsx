@@ -105,14 +105,17 @@ export default function ChatPage({ project }: { project: Project }) {
         )}
         {msgs.map((m, i) => (
           <div key={i} className={`msg ${m.role === 'user' ? 'user' : 'ai'}`}>
-            {(m.tools || []).map((t, j) => (
-              <div key={j} className="tool-card">
-                <span className="name">{t.name}</span>{' '}
-                {t.done ? '✓' : '⋯'}
-                {t.result && <div className="hint" style={{ marginTop: 3 }}>{t.result}</div>}
-              </div>
-            ))}
-            <span className={m.streaming ? 'cursor-blink' : ''}>{m.content}</span>
+            <span className="avatar">{m.role === 'user' ? '我' : '墨'}</span>
+            <div className="bubble">
+              {(m.tools || []).map((t, j) => (
+                <div key={j} className="tool-card">
+                  <span className="name">{t.name}</span>{' '}
+                  {t.done ? '✓' : '⋯'}
+                  {t.result && <div className="hint" style={{ marginTop: 3 }}>{t.result}</div>}
+                </div>
+              ))}
+              <span className={m.streaming ? 'cursor-blink' : ''}>{m.content}</span>
+            </div>
           </div>
         ))}
       </div>

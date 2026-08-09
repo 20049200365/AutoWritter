@@ -38,54 +38,61 @@ export default function TextPage({ project, onChanged, toast }: {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '230px 1fr', gap: 16 }}>
-      {/* 章目录 */}
-      <aside className="card" style={{ alignSelf: 'start', maxHeight: '78vh', overflow: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-          <h2 className="h2" style={{ marginBottom: 0 }}>章目</h2>
-          <span style={{ flex: 1 }} />
+    <div className="split">
+      {/* 章目录（上下文栏） */}
+      <aside className="ctx-col">
+        <div className="ctx-hd">
+          <h4>章 节</h4>
           <button className="btn sm primary" onClick={newChapter}>＋ 新章</button>
         </div>
-        <div className="row-list">
+        <div className="ctx-body">
           {chapters.map((c) => (
-            <div key={c.id} className="row-item" style={{ cursor: 'pointer', borderColor: c.id === curId ? 'var(--seal)' : undefined }}
+            <button key={c.id} className={`row${c.id === curId ? ' on' : ''}`}
               onClick={() => { setCurId(c.id); setMode('read') }}>
               <span className="ch-no">CH.{String(c.seq).padStart(2, '0')}</span>
-              <span className="grow"><span className="t">{c.title}</span>
-                <span className="s mono" style={{ display: 'block' }}>{c.word_count.toLocaleString()} 字 · {c.status}</span>
+              <span className="r-main">
+                <span className="r-t">{c.title}</span>
+                <span className="r-s">{c.word_count.toLocaleString()} 字 · {c.status}</span>
               </span>
-            </div>
+            </button>
           ))}
           {chapters.length === 0 && <Empty text="尚未落笔" actionText="开第一章" onAction={newChapter} />}
         </div>
       </aside>
 
       {/* 正文区 */}
-      {cur ? (
-        <div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
-            <button className={`pill${mode === 'read' ? ' seal' : ''}`} onClick={() => setMode('read')}>阅读</button>
-            <button className={`pill${mode === 'edit' ? ' seal' : ''}`} onClick={() => setMode('edit')}>编辑</button>
-            <span style={{ flex: 1 }} />
-            <ChapterActions chapter={cur} outline={outline} onChanged={async () => { await load(); onChanged() }} />
-          </div>
-          {mode === 'read' ? (
-            <ReadView chapter={cur} />
-          ) : (
-            <EditView key={cur.id} chapter={cur} toast={toast}
-              onSaved={async () => { await load(); onChanged() }} />
-          )}
-          <div className="pager">
-            <button className="btn sm" disabled={idx <= 0}
-              onClick={() => setCurId(chapters[idx - 1].id)}>← 上一章</button>
-            <span className="mono hint">{idx + 1} / {chapters.length}</span>
-            <button className="btn sm" disabled={idx >= chapters.length - 1}
-              onClick={() => setCurId(chapters[idx + 1].id)}>下一章 →</button>
-          </div>
-        </div>
-      ) : (
-        <Empty text="先开一章" actionText="开第一章" onAction={newChapter} />
-      )}
+      <div className="page-main">
+        {cur ? (
+          <>
+            <div className="text-top">
+              <h2>{cur.title}</h2>
+              <div className="seg">
+                <button className={mode === 'read' ? 'on' : ''} onClick={() => setMode('read')}>阅读</button>
+                <button className={mode === 'edit' ? 'on' : ''} onClick={() => setMode('edit')}>编辑</button>
+              </div>
+              <span className="meta">{cur.word_count.toLocaleString()} 字 · {cur.status}</span>
+              <ChapterActions chapter={cur} outline={outline} onChanged={async () => { await load(); onChanged() }} />
+            </div>
+            <div className="prose-scroll">
+              {mode === 'read' ? (
+                <ReadView chapter={cur} />
+              ) : (
+                <EditView key={cur.id} chapter={cur} toast={toast}
+                  onSaved={async () => { await load(); onChanged() }} />
+              )}
+            </div>
+            <div className="pager">
+              <button className="btn sm" disabled={idx <= 0}
+                onClick={() => setCurId(chapters[idx - 1].id)}>← 上一章</button>
+              <span className="mono">CH.{String(cur.seq).padStart(2, '0')} · {idx + 1}/{chapters.length}</span>
+              <button className="btn sm" disabled={idx >= chapters.length - 1}
+                onClick={() => setCurId(chapters[idx + 1].id)}>下一章 →</button>
+            </div>
+          </>
+        ) : (
+          <Empty text="先开一章" actionText="开第一章" onAction={newChapter} />
+        )}
+      </div>
     </div>
   )
 }
@@ -214,7 +221,7 @@ function EditView({ chapter, toast, onSaved }: {
   const liveCount = editor.getText().replace(/\s/g, '').length
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', padding: '18px 22px', maxWidth: 900, margin: '0 auto', width: '100%' }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
         <button className="btn primary sm" disabled={saving} onClick={save}>{saving ? '保存中…' : '保存（留版本）'}</button>
         <span className="hint mono">编辑区 {liveCount} 字（章总字数以保存后为准）</span>

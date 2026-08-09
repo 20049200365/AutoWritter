@@ -13,7 +13,7 @@ export default function BoardPage({ project, stats }: { project: Project; stats:
   }, [project.id])
 
   return (
-    <div>
+    <div className="page-pad">
       {/* 统计卡 */}
       <div className="stat-cards">
         <StatCard n={stats?.written ?? 0} l={`已写章 / 计划 ${stats?.plan ?? 0}`} />

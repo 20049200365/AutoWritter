@@ -116,7 +116,7 @@ export default function GeneratePage({ project, onChanged }: {
   const ch = chapters.find((c) => c.id === chId)
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+    <div className="page-pad" style={{ maxWidth: 980, margin: '0 auto', width: '100%' }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center' }}>
         <select className="select" style={{ width: 240 }} value={chId ?? ''}
           onChange={(e) => { setChId(+e.target.value); reset() }}>

@@ -36,7 +36,7 @@ export default function PrefsPage({ project, onChanged }: {
   const rate: Record<string, number> = profile.rubric_weights || {}
 
   return (
-    <div className="grid cols-2" style={{ maxWidth: 980, margin: '0 auto' }}>
+    <div className="page-pad grid cols-2" style={{ maxWidth: 1020, margin: '0 auto', width: '100%' }}>
       <div>
         <div className="card" style={{ marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>

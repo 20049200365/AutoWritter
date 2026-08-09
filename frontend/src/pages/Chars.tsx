@@ -76,7 +76,7 @@ export default function CharsPage({ project, onChanged }: {
     `${r.src_kind}:${r.src_id}` === selected || `${r.dst_kind}:${r.dst_id}` === selected) : []
 
   return (
-    <div className="grid cols-2" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
+    <div className="page-pad grid" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
       <div>
         <div style={{ display: 'flex', gap: 6, marginBottom: 10, alignItems: 'center' }}>
           {(['全部', '人物', '实体'] as const).map((f) => (

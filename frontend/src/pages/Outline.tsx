@@ -42,7 +42,7 @@ export default function OutlinePage({ project, onChanged }: {
   const rate = fsps.length ? Math.round((done / fsps.length) * 100) : 0
 
   return (
-    <div className="grid cols-2">
+    <div className="page-pad grid cols-2" style={{ maxWidth: 1080, margin: '0 auto', width: '100%' }}>
       {/* ---------- 大纲树 ---------- */}
       <section className="card">
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>

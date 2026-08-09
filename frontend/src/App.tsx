@@ -68,62 +68,64 @@ export default function App() {
 
   return (
     <div className="layout">
-      {/* ---------- 书架栏 ---------- */}
-      <aside className="col-shelf">
-        <div className="shelf-head">
-          <h1>书 架</h1>
-          <button className="icon-btn" title="新建作品" onClick={() => setShowNew(true)}>✚</button>
+      {/* ---------- 全宽顶栏：品牌 + 作品 + 页签 + 数据条 ---------- */}
+      <header className="topbar">
+        <div className="brand">
+          <span className="seal-logo">墨</span>
+          <b>墨案</b>
+          <span className="sub">AI 创作工作台</span>
         </div>
-        <div className="shelf-list">
-          {projects.map((p, i) => (
-            <button key={p.id} className={`book${p.id === activeId ? ' on' : ''}`}
-              onClick={() => setActiveId(p.id)} onContextMenu={(e) => { e.preventDefault(); deleteProject(p) }}>
-              <span className="spine" style={{ background: SPINE_COLORS[i % SPINE_COLORS.length] }}>
-                {p.title[0] || '书'}
-              </span>
-              <span className="meta">
-                <span className="t">{p.title}</span>
-                <span className="s">{p.genre} · {p.phase}</span>
-              </span>
-            </button>
-          ))}
-          {projects.length === 0 && (
-            <div style={{ padding: '18px 6px' }}>
+        {active && <span className="top-proj">{active.title}</span>}
+        {active && (
+          <nav className="tabs">
+            {TABS.map((t) => (
+              <button key={t.id} className={`tab${tab === t.id ? ' on' : ''}`}
+                onClick={() => setTab(t.id)}>
+                {t.label}
+                {t.id === 'outline' && stats && stats.fspDangling > 0 &&
+                  <span className="badge">{stats.fspDangling}</span>}
+              </button>
+            ))}
+          </nav>
+        )}
+        {stats && (
+          <span className="statstrip">
+            <span>总字数 <b>{stats.words.toLocaleString()}</b></span><i className="sep">|</i>
+            <span>章节 <b>{stats.written}/{stats.plan}</b></span><i className="sep">|</i>
+            <span>伏笔回收 <b>{stats.fspDone}/{stats.fsp}</b></span><i className="sep">|</i>
+            <span>人物 <b>{stats.chars}</b></span>
+          </span>
+        )}
+      </header>
+
+      <div className="cols">
+        {/* ---------- 书架栏 ---------- */}
+        <aside className="col-shelf">
+          <div className="shelf-head">
+            <span className="sh-title">书 架</span>
+            <button className="icon-btn" title="新建作品" onClick={() => setShowNew(true)}>✚</button>
+          </div>
+          <div className="shelf-list">
+            {projects.map((p, i) => (
+              <button key={p.id} className={`book${p.id === activeId ? ' on' : ''}`}
+                onClick={() => setActiveId(p.id)} onContextMenu={(e) => { e.preventDefault(); deleteProject(p) }}>
+                <span className="spine" style={{ background: SPINE_COLORS[i % SPINE_COLORS.length] }}>
+                  {p.title[0] || '书'}
+                </span>
+                <span className="meta">
+                  <span className="t">{p.title}</span>
+                  <span className="s">{p.genre} · {p.phase}</span>
+                </span>
+              </button>
+            ))}
+            {projects.length === 0 && (
               <Empty text="书架尚空" actionText="开一本书" onAction={() => setShowNew(true)} />
-            </div>
-          )}
-        </div>
-        <div style={{ padding: '10px 14px', fontSize: 11, color: 'var(--ink-3)' }}>
-          右键书脊可删除（5 秒可撤销）
-        </div>
-      </aside>
+            )}
+          </div>
+          <div className="shelf-foot">右键书脊可删除<span className="kai">5 秒内可撤销</span></div>
+        </aside>
 
-      {/* ---------- 主区 ---------- */}
-      <div className="col-main">
-        <div className="topbar">
-          <span className="proj-title">{active ? `《${active.title}》` : '未选择作品'}</span>
-          {active && (
-            <nav className="tabs">
-              {TABS.map((t) => (
-                <button key={t.id} className={`tab${tab === t.id ? ' on' : ''}`}
-                  onClick={() => setTab(t.id)}>
-                  {t.label}
-                  {t.id === 'outline' && stats && stats.fspDangling > 0 &&
-                    <span className="badge">{stats.fspDangling}</span>}
-                </button>
-              ))}
-            </nav>
-          )}
-          {stats && (
-            <span className="stats">
-              <span>章 {stats.written}/{stats.plan}</span>
-              <span>{stats.words.toLocaleString()} 字</span>
-              <span>人物 {stats.chars}</span>
-              <span>伏笔 {stats.fspDone}/{stats.fsp}</span>
-            </span>
-          )}
-        </div>
-
+        {/* ---------- 主区 ---------- */}
         <main className="page">
           {!active ? (
             <Empty text="先在左侧开一本书" actionText="新建作品" onAction={() => setShowNew(true)} />
@@ -148,7 +150,6 @@ export default function App() {
           )}
         </main>
       </div>
-
       {showNew && (
         <NewProjectModal onClose={() => setShowNew(false)} onCreated={(id) => {
           setShowNew(false)

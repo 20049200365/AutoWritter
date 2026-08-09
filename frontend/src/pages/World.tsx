@@ -23,21 +23,29 @@ export default function WorldPage({ project, onChanged }: {
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-        {['全部', ...WORLD_CATS].map((c) => (
-          <button key={c} className={`pill${cat === c ? ' seal' : ''}`} onClick={() => setCat(c)}>
-            {c}{c !== '全部' && ` ${entries.filter((e) => e.category === c).length}`}
-          </button>
-        ))}
-        <span style={{ flex: 1 }} />
-        <button className="btn primary" onClick={() => setEditing('new')}>＋ 新词条</button>
-      </div>
+    <div className="split">
+      {/* 分类导航（上下文栏） */}
+      <aside className="ctx-col">
+        <div className="ctx-hd">
+          <h4>设 定 分 类</h4>
+          <button className="btn sm primary" onClick={() => setEditing('new')}>＋ 词条</button>
+        </div>
+        <div className="ctx-body">
+          {['全部', ...WORLD_CATS].map((c) => (
+            <button key={c} className={`row${cat === c ? ' on' : ''}`} onClick={() => setCat(c)}>
+              <span className="r-main"><span className="r-t">{c}</span></span>
+              <span className="mono hint">{c === '全部' ? entries.length : entries.filter((e) => e.category === c).length}</span>
+            </button>
+          ))}
+        </div>
+      </aside>
 
-      {shown.length === 0 ? (
-        <Empty text="这一类还没有设定" actionText="写第一条" onAction={() => setEditing('new')} />
-      ) : (
-        <div className="grid cols-3">
+      <div className="page-main">
+        <div className="page-pad">
+          {shown.length === 0 ? (
+            <Empty text="这一类还没有设定" actionText="写第一条" onAction={() => setEditing('new')} />
+          ) : (
+            <div className="grid cols-3">
           {shown.map((e) => (
             <div key={e.id} className="card" style={{ cursor: 'pointer' }}
               onClick={() => setOpen(open === e.id ? null : e.id)}>
@@ -56,8 +64,10 @@ export default function WorldPage({ project, onChanged }: {
               </p>
             </div>
           ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {editing && (
         <EntryModal project={project} entry={editing === 'new' ? null : editing}
