@@ -1,6 +1,6 @@
-/* 大纲与伏笔：三级树（卷卡片）+ 伏笔四态追踪（标记对齐参考模板；回收纯用户驱动） */
+/* 大纲与伏笔：三级树（卷卡片）+ 伏笔四态追踪 + 一致性巡检（回收纯用户驱动） */
 import { useEffect, useMemo, useState } from 'react'
-import { api, Chapter, CH_STATUS, Foreshadow, OutlineNode, Project } from '../api'
+import { api, Chapter, CH_STATUS, fmtCh, Foreshadow, OutlineNode, Project } from '../api'
 import { Empty, Modal } from '../ui'
 
 const FSP_TAG: Record<string, string> = { 已埋设: 'qing', 部分揭示: 'zhe', 已回收: 'lv', 悬空: 'seal' }
@@ -13,6 +13,7 @@ export default function OutlinePage({ project, onChanged }: {
   const [fsps, setFsps] = useState<Foreshadow[]>([])
   const [editNode, setEditNode] = useState<OutlineNode | 'new' | null>(null)
   const [newFsp, setNewFsp] = useState(false)
+  const [inspect, setInspect] = useState(false)
 
   const load = async () => {
     const [ns, cs, fs] = await Promise.all([
@@ -48,12 +49,15 @@ export default function OutlinePage({ project, onChanged }: {
     <div className="out-wrap">
       <div className="out-inner">
         {/* 统计卡 */}
-        <div className="statcards">
-          <div className="card statcard"><span className="sc-v">{roots.length}</span><span className="sc-l">卷</span></div>
-          <div className="card statcard"><span className="sc-v">{nodes.length}</span><span className="sc-l">大纲节点</span></div>
-          <div className="card statcard"><span className="sc-v">{chapters.length}</span><span className="sc-l">章节</span></div>
-          <div className={`card statcard${dangling > 0 ? ' warn' : ''}`}>
-            <span className="sc-v">{done}/{fsps.length}</span><span className="sc-l">伏笔回收（悬空 {dangling}）</span></div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
+          <div className="statcards" style={{ flex: 1 }}>
+            <div className="card statcard"><span className="sc-v">{roots.length}</span><span className="sc-l">卷</span></div>
+            <div className="card statcard"><span className="sc-v">{nodes.length}</span><span className="sc-l">大纲节点</span></div>
+            <div className="card statcard"><span className="sc-v">{chapters.length}</span><span className="sc-l">章节</span></div>
+            <div className={`card statcard${dangling > 0 ? ' warn' : ''}`}>
+              <span className="sc-v">{done}/{fsps.length}</span><span className="sc-l">伏笔回收（悬空 {dangling}）</span></div>
+          </div>
+          <button className="btn" style={{ alignSelf: 'center' }} onClick={() => setInspect(true)}>◎ 一致性巡检</button>
         </div>
 
         {/* 卷章结构 */}
@@ -115,7 +119,100 @@ export default function OutlinePage({ project, onChanged }: {
         <FspModal project={project} chapters={chapters} onClose={() => setNewFsp(false)}
           onSaved={async () => { setNewFsp(false); await load(); onChanged() }} />
       )}
+      {inspect && (
+        <InspectModal nodes={nodes} chapters={chapters} fsps={fsps} onClose={() => setInspect(false)} />
+      )}
     </div>
+  )
+}
+
+/* ---------- 一致性巡检：全部由真实数据计算（对齐参考模板 inspectCompute） ---------- */
+interface Issue { lv: 'H' | 'M' | 'L'; where: string; text: string }
+
+function inspectCompute(nodes: OutlineNode[], chapters: Chapter[], fsps: Foreshadow[]): Issue[] {
+  const out: Issue[] = []
+  const seqOf = (id?: number | null) => chapters.find((c) => c.id === id)?.seq
+  /* 叶子节点（带张力/状态的章级节点）按树序 */
+  const kids = (pid: number | null) => nodes.filter((n) => n.parent_id === pid).sort((a, b) => a.sort - b.sort)
+  const leaves: OutlineNode[] = []
+  const walk = (pid: number | null) => {
+    for (const n of kids(pid)) {
+      if (nodes.some((x) => x.parent_id === n.id)) walk(n.id)
+      else leaves.push(n)
+    }
+  }
+  walk(null)
+
+  fsps.forEach((f) => {
+    const plant = seqOf(f.planted_chapter_id)
+    const planned = seqOf(f.planned_resolve_chapter_id)
+    if (f.state === '悬空') {
+      out.push({ lv: 'H', where: '伏笔', text: `「${f.title}」${plant ? `（${fmtCh(plant)} 埋设）` : ''}悬空未规划回收，读者期待无落点。` })
+    }
+    if (plant != null && planned != null && planned - plant > 12) {
+      out.push({ lv: 'M', where: '伏笔', text: `「${f.title}」跨度 ${planned - plant} 章（${fmtCh(plant)}→${fmtCh(planned)}），超过 12 章遗忘线，建议中途补一次提醒。` })
+    }
+    if (f.planned_resolve_chapter_id && f.state !== '已回收') {
+      const tgt = chapters.find((c) => c.id === f.planned_resolve_chapter_id)
+      if (tgt && tgt.status === '定稿') {
+        out.push({ lv: 'H', where: fmtCh(tgt.seq), text: `「${f.title}」计划回收章 ${fmtCh(tgt.seq)} 已定稿，但伏笔仍未回收——定稿章里它必须有交代。` })
+      }
+    }
+  })
+  /* 连续三章张力接近 → 节奏平台期 */
+  const ts = leaves.filter((n) => n.tension != null)
+  for (let i = 0; i + 2 < ts.length; i++) {
+    const [a, b, c] = [ts[i].tension!, ts[i + 1].tension!, ts[i + 2].tension!]
+    if (Math.abs(a - b) <= 1 && Math.abs(b - c) <= 1) {
+      out.push({ lv: 'M', where: `节拍 ${i + 1}–${i + 3}`, text: '连续三节张力接近，节奏进入平台期，建议中段插入小揭示或小损失。' })
+      i += 2
+    }
+  }
+  if (!out.length) out.push({ lv: 'L', where: '全局', text: '未发现问题。数据层面的自洽性良好。' })
+  const order = { H: 0, M: 1, L: 2 }
+  return out.sort((x, y) => order[x.lv] - order[y.lv])
+}
+
+function InspectModal({ nodes, chapters, fsps, onClose }: {
+  nodes: OutlineNode[]; chapters: Chapter[]; fsps: Foreshadow[]; onClose: () => void
+}) {
+  const steps = ['扫描伏笔清单…', '核对章纲状态…', '计算张力曲线…', '汇总分级问题…']
+  const [step, setStep] = useState(0)
+  const [items, setItems] = useState<Issue[] | null>(null)
+
+  useEffect(() => {
+    if (step < steps.length) {
+      const t = setTimeout(() => setStep((s) => s + 1), 420)
+      return () => clearTimeout(t)
+    }
+    setItems(inspectCompute(nodes, chapters, fsps))
+  }, [step])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <Modal title="一致性巡检" onClose={onClose}>
+      {!items ? (
+        <>
+          <div className="notice">◎ {steps[Math.min(step, steps.length - 1)]}</div>
+          <div className="progress" style={{ marginTop: 10 }}>
+            <i style={{ width: `${8 + step * 24}%` }} />
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="m-sub">检出 {items.length} 项（全部由当前数据计算）</p>
+          <div className="card vol-card" style={{ marginBottom: 12 }}>
+            {items.map((it, i) => (
+              <div key={i} className="inspect-item">
+                <span className={`lv ${it.lv}`}>{it.lv === 'H' ? '高' : it.lv === 'M' ? '中' : '低'}</span>
+                <span className="where">{it.where}</span>
+                <span>{it.text}</span>
+              </div>
+            ))}
+          </div>
+          <div className="m-acts"><button className="btn" onClick={onClose}>关闭</button></div>
+        </>
+      )}
+    </Modal>
   )
 }
 
