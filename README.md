@@ -62,6 +62,10 @@
 
 ## 快速开始
 
+### 一键启动（推荐）
+
+配置好 `.env`（见下）后，双击仓库根目录的 **`start.bat`**：首次运行自动创建虚拟环境、安装依赖、构建前端，之后每次双击即起服务并自动打开浏览器 http://127.0.0.1:8000；关闭弹出的终端窗口即停止服务。
+
 ### 1. 配置 LLM
 
 复制并编辑项目根目录 `.env`（已被 gitignore，不会上传）：
@@ -74,7 +78,7 @@ LLM_REVIEWER_MODEL=deepseek-v4-flash    # 评审
 LLM_DISTILLER_MODEL=deepseek-v4-flash   # 蒸馏（可换更便宜的模型）
 ```
 
-### 2. 启动后端
+### 2. 手动启动（不用 start.bat 时）
 
 ```powershell
 cd backend
