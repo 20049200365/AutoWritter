@@ -21,3 +21,4 @@ Thumbs.db
 # 环境与密钥
 .env
 *.local
+tsconfig.tsbuildinfo
