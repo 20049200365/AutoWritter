@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>切换 demo 2 · 标签页式（横向 tab）</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#f6f1e6;--card:#fbf8f0;--sub:#f0e8d6;--deep:#e9dfc8;--ink:#2f2a22;--ink2:#5c5548;--ink3:#8d8574;--line:#e3d9c4;--line2:#d3c7aa;--seal:#a8433a;--seal-soft:rgba(168,67,58,.09)}
+body{background:#ece7da;font-family:"Songti SC","STSong","Noto Serif SC","SimSun",serif;font-size:14px;color:var(--ink);display:flex;gap:40px;padding:40px;align-items:flex-start}
+.hint{font-size:13px;color:var(--ink3);line-height:2;font-family:"Kaiti SC","STKaiti","KaiTi",serif}
+.hint b{color:var(--seal)}
+#chat{width:400px;height:640px;background:var(--card);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 2px 4px rgba(47,42,34,.06),0 10px 30px rgba(47,42,34,.08)}
+#hd{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line)}
+#hd .t{font-size:13px;font-weight:700;letter-spacing:.1em;color:var(--ink2);font-family:var(--kai)}
+#hd .grow{flex:1}
+/* ===== 核心：标签页行 ===== */
+#tabs{flex:none;display:flex;align-items:center;gap:3px;padding:6px 8px;border-bottom:1px solid var(--line);background:var(--paper);overflow-x:auto}
+#tabs::-webkit-scrollbar{height:4px}
+#tabs::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
+.tab-item{flex:none;display:inline-flex;align-items:center;gap:6px;max-width:150px;padding:5px 10px;border-radius:7px;font-size:12px;color:var(--ink2);cursor:pointer;white-space:nowrap;border:1px solid transparent}
+.tab-item:hover{background:var(--deep)}
+.tab-item.on{background:var(--card);border-color:var(--line2);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(47,42,34,.06)}
+.tab-item .t-t{overflow:hidden;text-overflow:ellipsis}
+.tab-item .t-x{flex:none;width:15px;height:15px;border-radius:4px;display:none;align-items:center;justify-content:center;font-size:10px;color:var(--ink3)}
+.tab-item:hover .t-x{display:inline-flex}
+.tab-item .t-x:hover{background:var(--line2);color:var(--ink)}
+.tab-new{flex:none;width:24px;height:24px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink3);cursor:pointer}
+.tab-new:hover{background:var(--deep);color:var(--ink)}
+/* 聊天区 */
+#scroll{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.msg{display:flex;gap:9px;align-items:flex-start}
+.msg.user{flex-direction:row-reverse}
+.av{width:28px;height:28px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;font-family:var(--kai);font-size:13px}
+.msg.user .av{background:var(--deep);color:var(--ink2)}
+.msg.ai .av{background:var(--seal);color:var(--card)}
+.bb{max-width:82%;padding:9px 12px;border-radius:11px;font-size:12.5px;line-height:1.8}
+.msg.user .bb{background:var(--sub);border:1px solid var(--line);border-top-right-radius:4px}
+.msg.ai .bb{background:var(--card);border:1px solid var(--line);border-top-left-radius:4px;flex:1;min-width:0}
+#input{flex:none;display:flex;gap:7px;align-items:flex-end;padding:10px 16px 14px;border-top:1px solid var(--line)}
+#input textarea{flex:1;border:1px solid var(--line2);border-radius:11px;background:var(--paper);padding:8px 10px;font-size:12.5px;resize:none;outline:none;font-family:inherit;line-height:1.6}
+#input button{padding:6px 14px;border-radius:8px;background:var(--ink);color:var(--paper);font-size:12.5px;border:none;cursor:pointer;flex:none}
+</style>
+</head>
+<body>
+<div id="chat">
+  <div id="hd"><span class="t">Agent 对话</span><span class="grow"></span><span style="font-size:11px;color:var(--ink3)">标签页切换</span></div>
+  <!-- 标签页行 -->
+  <div id="tabs">
+    <div class="tab-new" title="新会话">＋</div>
+  </div>
+  <!-- 聊天区 -->
+  <div id="scroll"></div>
+  <div id="input"><textarea rows="1" placeholder="问点什么…"></textarea><button>落笔</button></div>
+</div>
+<div class="hint">
+  <b>方案 2 · 标签页式</b><br>
+  会话像浏览器/编辑器标签页一样横排，<br>
+  多开时横向滚动，＋号新建，tab 上 × 关闭。<br><br>
+  优点：只占一行高，切换最快，像 IDE。<br>
+  缺点：标题一长就被截断，只能显示标题。<br><br>
+  主流代表：Cursor / VS Code / 浏览器标签。
+</div>
+<script>
+const S0 = [
+  { t: 'AI 提议 · 家底盘点', msgs: [['u','你好，盘点一下这本书的家底'],['a','这本书目前 1 章 / 2035 字，人物和伏笔都还是 0。需要我帮你规划下一步吗？']] },
+  { t: '伏笔梳理：千骨铁条', msgs: [['u','把千骨铁条的伏笔理一遍'],['a','「千骨」铁条已埋下：锈壳上的暗红字迹、伤口渗血吸收、灵气自掌心旧疤运转。悬空 0 个，回收 0 个。']] },
+  { t: '节奏诊断：第一章', msgs: [['u','诊断一下大纲节奏'],['a','第一章以「灵田劳作—被欺—铁条认主」推进，起势平稳，结尾以门外脚步声收束，钩子成立。整体节奏偏慢，建议第二章加快冲突。']] },
+]
+let idx = 0
+const tabs = document.getElementById('tabs')
+const scroll = document.getElementById('scroll')
+function renderTabs(){
+  ;[...tabs.querySelectorAll('.tab-item')].forEach(x=>x.remove())
+  S0.forEach((s,i)=>{
+    const d = document.createElement('div')
+    d.className = 'tab-item' + (i===idx?' on':'')
+    d.innerHTML = `<span class="t-t">${s.t}</span><span class="t-x" title="关闭">✕</span>`
+    d.onclick = (e)=>{ if(e.target.classList.contains('t-x')) return; idx=i; renderTabs(); renderMsgs() }
+    d.querySelector('.t-x').onclick = (e)=>{ e.stopPropagation(); S0.splice(i,1); if(idx>=S0.length) idx=Math.max(0,S0.length-1); renderTabs(); renderMsgs() }
+    tabs.insertBefore(d, tabs.querySelector('.tab-new'))
+  })
+}
+function renderMsgs(){
+  const s = S0[idx]
+  const msgs = s ? (s.msgs || [['a','这是「'+s.t+'」会话。问我续写、伏笔、节奏、人物。']]) : [['a','没有会话。点 ＋ 新建一个。']]
+  scroll.innerHTML = msgs.map(([r,t])=>`<div class="msg ${r}"><span class="av">${r==='u'?'我':'墨'}</span><div class="bb">${t}</div></div>`).join('')
+}
+document.querySelector('.tab-new').onclick = ()=>{ S0.push({t:'新会话',msgs:[['a','新会话已就绪。问我续写、伏笔、节奏、人物。']]}); idx=S0.length-1; renderTabs(); renderMsgs() }
+renderTabs(); renderMsgs()
+</script>
+</body>
+</html>

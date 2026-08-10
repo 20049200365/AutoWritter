@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>对话栏风格对比 · 4 款</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#ece7da;font-family:"Songti SC","STSong","Noto Serif SC","SimSun",serif;font-size:14px;color:#2f2a22;padding:28px 32px;min-height:100vh}
+h1{font-size:20px;margin-bottom:6px;letter-spacing:.1em}
+.sub{font-size:12.5px;color:#8d8574;margin-bottom:20px;font-family:"Kaiti SC","STKaiti","KaiTi",serif}
+.row{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.case{flex:1;min-width:300px;max-width:360px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 4px rgba(47,42,34,.06),0 10px 30px rgba(47,42,34,.08)}
+.case-hd{padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #eee}
+.case-hd b{font-size:13px}
+.case-hd span{font-size:11px;color:#999;font-family:"Kaiti SC","STKaiti","KaiTi",serif}
+.case-hd .dot{width:8px;height:8px;border-radius:50%}
+/* ================= A · 墨案原版（当前） ================= */
+.a{background:#f6f1e6}
+.a .case-hd{background:#fbf8f0;border-color:#e3d9c4}
+.a .case-hd .dot{background:#a8433a}
+.a .bar{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid #e3d9c4;background:#fbf8f0}
+.a select{flex:1;min-width:0;border:1px solid #d3c7aa;border-radius:8px;padding:5px 8px;background:#fbf8f0;font-size:12px;color:#5c5548;outline:none}
+.a .icon-btn{width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#8d8574;font-size:13px;flex:none;background:none;border:none;cursor:pointer}
+.a .icon-btn:hover{background:#e9dfc8;color:#2f2a22}
+.a .scroll{padding:16px 16px 6px;display:flex;flex-direction:column;gap:14px;height:430px;overflow-y:auto}
+.a .msg{display:flex;gap:9px;align-items:flex-start}
+.a .msg.user{flex-direction:row-reverse}
+.a .avatar{width:30px;height:30px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;font-family:"Kaiti SC","STKaiti","KaiTi",serif;font-size:14px}
+.a .msg.ai .avatar{background:#a8433a;color:#fbf8f0;box-shadow:inset 0 0 0 2px rgba(246,241,230,.3)}
+.a .msg.user .avatar{background:#e9dfc8;color:#5c5548}
+.a .bubble{max-width:82%;padding:9px 12px;border-radius:11px;font-size:12.5px;line-height:1.8}
+.a .msg.user .bubble{background:#f0e8d6;border:1px solid #e3d9c4;border-top-right-radius:4px}
+.a .msg.ai .bubble{background:#fbf8f0;border:1px solid #e3d9c4;border-top-left-radius:4px;box-shadow:0 1px 2px rgba(47,42,34,.05),0 4px 14px rgba(47,42,34,.06);flex:1;min-width:0}
+.a .who{font-size:10.5px;color:#8d8574;margin-bottom:3px;display:flex;gap:5px;align-items:center}
+.a .tag{font-size:10px;color:#a8433a;background:rgba(168,67,58,.09);padding:1px 6px;border-radius:999px}
+.a .think{border:1px dashed #d3c7aa;border-radius:8px;background:#f6f1e6;margin-bottom:6px;font-size:11px;color:#5c5548;overflow:hidden}
+.a .think-hd{display:flex;align-items:center;gap:5px;padding:5px 8px;cursor:pointer;color:#8d8574;font-size:11px}
+.a .think-body{padding:2px 10px 7px;font-family:"Kaiti SC","STKaiti","KaiTi",serif;display:flex;flex-direction:column;gap:2px}
+.a .toolcard{border:1px solid #e3d9c4;border-radius:8px;background:#f6f1e6;margin-bottom:6px;overflow:hidden}
+.a .tc-hd{display:flex;align-items:center;gap:6px;padding:5px 8px;cursor:pointer;font-size:11px}
+.a .tc-name{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;color:#40635c;font-weight:600}
+.a .tc-state{flex:none;font-size:10px;color:#6f8f62;margin-left:auto}
+.a .tc-result{display:none;border-top:1px dashed #e3d9c4;padding:6px 9px;font-size:10.5px;color:#5c5548;white-space:pre-wrap;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.a .chips{display:flex;gap:6px;flex-wrap:wrap;padding:8px 16px 0}
+.a .chip{padding:4px 10px;border-radius:999px;border:1px solid #d3c7aa;background:#fbf8f0;font-size:11px;color:#5c5548;font-family:"Kaiti SC","STKaiti","KaiTi",serif;cursor:pointer}
+.a .chip:hover{background:#f0e8d6}
+.a .input{padding:8px 16px 12px}
+.a .ci-box{display:flex;gap:7px;align-items:flex-end;border:1px solid #d3c7aa;border-radius:11px;background:#fbf8f0;padding:7px 8px}
+.a .ci-box textarea{flex:1;border:none;outline:none;background:transparent;resize:none;font-size:12px;line-height:1.6;min-height:20px;max-height:80px;font-family:inherit}
+.a .btn{padding:5px 13px;border-radius:8px;font-size:12px;background:#2f2a22;color:#f6f1e6;border:none;cursor:pointer;flex:none}
+.a .meta{display:flex;gap:6px;font-size:10px;color:#8d8574;padding-top:6px}
+/* ================= B · 纸白清爽 ================= */
+.b{background:#fafafa}
+.b .case-hd{background:#fff;border-color:#eee}
+.b .case-hd .dot{background:#4a7d6f}
+.b .bar{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid #eee;background:#fff}
+.b select{flex:1;min-width:0;border:1px solid #ddd;border-radius:8px;padding:5px 8px;background:#fff;font-size:12px;color:#555;outline:none}
+.b .icon-btn{width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#999;font-size:13px;flex:none;background:none;border:none;cursor:pointer}
+.b .icon-btn:hover{background:#f0f0f0;color:#333}
+.b .scroll{padding:16px 14px 6px;display:flex;flex-direction:column;gap:12px;height:430px;overflow-y:auto}
+.b .msg{display:flex;gap:8px;align-items:flex-start}
+.b .msg.user{flex-direction:row-reverse}
+.b .avatar{width:28px;height:28px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:"Kaiti SC","STKaiti","KaiTi",serif;font-size:12px}
+.b .msg.ai .avatar{background:#e8f0ee;color:#4a7d6f}
+.b .msg.user .avatar{background:#f0f0f0;color:#888}
+.b .bubble{max-width:80%;padding:9px 12px;border-radius:12px;font-size:12.5px;line-height:1.8}
+.b .msg.user .bubble{background:#eef4f2;border-top-right-radius:3px;color:#3a4a46}
+.b .msg.ai .bubble{background:#fff;border:1px solid #e8e8e8;border-top-left-radius:3px;flex:1;min-width:0}
+.b .who{font-size:10.5px;color:#aaa;margin-bottom:3px;display:flex;gap:5px;align-items:center}
+.b .tag{font-size:10px;color:#4a7d6f;background:#e8f0ee;padding:1px 6px;border-radius:999px}
+.b .think{border-radius:8px;background:#f7f7f7;margin-bottom:6px;font-size:11px;overflow:hidden}
+.b .think-hd{display:flex;align-items:center;gap:5px;padding:5px 8px;cursor:pointer;color:#999;font-size:11px}
+.b .think-body{padding:2px 10px 7px;font-family:"Kaiti SC","STKaiti","KaiTi",serif;display:flex;flex-direction:column;gap:2px;color:#777}
+.b .toolcard{border-radius:8px;background:#f7f7f7;margin-bottom:6px;overflow:hidden}
+.b .tc-hd{display:flex;align-items:center;gap:6px;padding:5px 8px;cursor:pointer;font-size:11px}
+.b .tc-name{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;color:#4a7d6f;font-weight:600}
+.b .tc-state{flex:none;font-size:10px;color:#6f9a8c;margin-left:auto}
+.b .tc-result{display:none;border-top:1px solid #e8e8e8;padding:6px 9px;font-size:10.5px;color:#777;white-space:pre-wrap;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.b .chips{display:flex;gap:6px;flex-wrap:wrap;padding:8px 14px 0}
+.b .chip{padding:4px 10px;border-radius:999px;border:1px solid #ddd;background:#fff;font-size:11px;color:#666;font-family:"Kaiti SC","STKaiti","KaiTi",serif;cursor:pointer}
+.b .chip:hover{background:#f5f5f5}
+.b .input{padding:8px 14px 12px}
+.b .ci-box{display:flex;gap:7px;align-items:flex-end;border:1px solid #ddd;border-radius:12px;background:#fff;padding:7px 8px}
+.b .ci-box textarea{flex:1;border:none;outline:none;background:transparent;resize:none;font-size:12px;line-height:1.6;min-height:20px;max-height:80px;font-family:inherit}
+.b .btn{padding:5px 13px;border-radius:8px;font-size:12px;background:#4a7d6f;color:#fff;border:none;cursor:pointer;flex:none}
+.b .meta{display:flex;gap:6px;font-size:10px;color:#999;padding-top:6px}
+/* ================= C · 现代极简 ================= */
+.c{background:#fff}
+.c .case-hd{background:#fff;border-color:#f0f0f0}
+.c .case-hd .dot{background:#111}
+.c .bar{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid #f0f0f0;background:#fff}
+.c select{flex:1;min-width:0;border:1px solid #e5e5e5;border-radius:6px;padding:5px 8px;background:#fff;font-size:12px;color:#444;outline:none}
+.c .icon-btn{width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#999;font-size:13px;flex:none;background:none;border:none;cursor:pointer}
+.c .icon-btn:hover{background:#f5f5f5;color:#111}
+.c .scroll{padding:14px 14px 6px;display:flex;flex-direction:column;gap:12px;height:430px;overflow-y:auto}
+.c .msg{display:flex;gap:8px;align-items:flex-start}
+.c .msg.user{flex-direction:row-reverse}
+.c .avatar{width:24px;height:24px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:"Kaiti SC","STKaiti","KaiTi",serif;font-size:11px}
+.c .msg.ai .avatar{background:#111;color:#fff}
+.c .msg.user .avatar{background:#eee;color:#777}
+.c .bubble{max-width:85%;padding:8px 11px;font-size:12.5px;line-height:1.8}
+.c .msg.user .bubble{background:#111;color:#fff;border-radius:14px;border-bottom-right-radius:4px}
+.c .msg.ai .bubble{flex:1;min-width:0;border-radius:4px;background:#fafafa;border:1px solid #f0f0f0}
+.c .who{font-size:10.5px;color:#bbb;margin-bottom:3px;display:flex;gap:5px;align-items:center}
+.c .tag{font-size:10px;color:#888;background:#f0f0f0;padding:1px 6px;border-radius:4px}
+.c .think{border-radius:6px;background:#fff;border:1px solid #eee;margin-bottom:6px;font-size:11px;overflow:hidden}
+.c .think-hd{display:flex;align-items:center;gap:5px;padding:5px 8px;cursor:pointer;color:#999;font-size:11px}
+.c .think-body{padding:2px 10px 7px;font-family:"Kaiti SC","STKaiti","KaiTi",serif;display:flex;flex-direction:column;gap:2px;color:#888}
+.c .toolcard{border-radius:6px;background:#fff;border:1px solid #eee;margin-bottom:6px;overflow:hidden}
+.c .tc-hd{display:flex;align-items:center;gap:6px;padding:5px 8px;cursor:pointer;font-size:11px}
+.c .tc-name{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;color:#333;font-weight:600}
+.c .tc-state{flex:none;font-size:10px;color:#888;margin-left:auto}
+.c .tc-result{display:none;border-top:1px solid #f0f0f0;padding:6px 9px;font-size:10.5px;color:#666;white-space:pre-wrap;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.c .chips{display:flex;gap:6px;flex-wrap:wrap;padding:8px 14px 0}
+.c .chip{padding:4px 10px;border-radius:6px;border:1px solid #e5e5e5;background:#fff;font-size:11px;color:#666;cursor:pointer}
+.c .chip:hover{background:#f5f5f5}
+.c .input{padding:8px 14px 12px}
+.c .ci-box{display:flex;gap:7px;align-items:flex-end;border:1px solid #e5e5e5;border-radius:10px;background:#fff;padding:7px 8px}
+.c .ci-box textarea{flex:1;border:none;outline:none;background:transparent;resize:none;font-size:12px;line-height:1.6;min-height:20px;max-height:80px;font-family:inherit}
+.c .btn{padding:5px 13px;border-radius:7px;font-size:12px;background:#111;color:#fff;border:none;cursor:pointer;flex:none}
+.c .meta{display:flex;gap:6px;font-size:10px;color:#bbb;padding-top:6px}
+/* ================= D · 深色夜写 ================= */
+.d{background:#232a2e}
+.d .case-hd{background:#1d2326;border-color:#313a40}
+.d .case-hd .dot{background:#e0a458}
+.d .bar{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid #313a40;background:#1d2326}
+.d select{flex:1;min-width:0;border:1px solid #3a444b;border-radius:8px;padding:5px 8px;background:#232a2e;font-size:12px;color:#c9d1d4;outline:none}
+.d .icon-btn{width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#7d8a90;font-size:13px;flex:none;background:none;border:none;cursor:pointer}
+.d .icon-btn:hover{background:#313a40;color:#e8edef}
+.d .scroll{padding:16px 14px 6px;display:flex;flex-direction:column;gap:14px;height:430px;overflow-y:auto}
+.d .msg{display:flex;gap:9px;align-items:flex-start}
+.d .msg.user{flex-direction:row-reverse}
+.d .avatar{width:28px;height:28px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;font-family:"Kaiti SC","STKaiti","KaiTi",serif;font-size:12px}
+.d .msg.ai .avatar{background:#3a444b;color:#e0a458}
+.d .msg.user .avatar{background:#313a40;color:#8a979d}
+.d .bubble{max-width:82%;padding:9px 12px;border-radius:11px;font-size:12.5px;line-height:1.8}
+.d .msg.user .bubble{background:#3a444b;border-top-right-radius:4px;color:#e8edef}
+.d .msg.ai .bubble{background:#2a3237;border:1px solid #384148;border-top-left-radius:4px;flex:1;min-width:0;color:#d5dde0}
+.d .who{font-size:10.5px;color:#7d8a90;margin-bottom:3px;display:flex;gap:5px;align-items:center}
+.d .tag{font-size:10px;color:#e0a458;background:rgba(224,164,88,.12);padding:1px 6px;border-radius:999px}
+.d .think{border:1px dashed #3a444b;border-radius:8px;background:#1d2326;margin-bottom:6px;font-size:11px;overflow:hidden}
+.d .think-hd{display:flex;align-items:center;gap:5px;padding:5px 8px;cursor:pointer;color:#7d8a90;font-size:11px}
+.d .think-body{padding:2px 10px 7px;font-family:"Kaiti SC","STKaiti","KaiTi",serif;display:flex;flex-direction:column;gap:2px;color:#9aa7ad}
+.d .toolcard{border:1px solid #384148;border-radius:8px;background:#1d2326;margin-bottom:6px;overflow:hidden}
+.d .tc-hd{display:flex;align-items:center;gap:6px;padding:5px 8px;cursor:pointer;font-size:11px}
+.d .tc-name{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;color:#8fb5a8;font-weight:600}
+.d .tc-state{flex:none;font-size:10px;color:#8fb5a8;margin-left:auto}
+.d .tc-result{display:none;border-top:1px dashed #384148;padding:6px 9px;font-size:10.5px;color:#9aa7ad;white-space:pre-wrap;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+.d .chips{display:flex;gap:6px;flex-wrap:wrap;padding:8px 14px 0}
+.d .chip{padding:4px 10px;border-radius:999px;border:1px solid #3a444b;background:#232a2e;font-size:11px;color:#a9b5ba;font-family:"Kaiti SC","STKaiti","KaiTi",serif;cursor:pointer}
+.d .chip:hover{background:#313a40}
+.d .input{padding:8px 14px 12px}
+.d .ci-box{display:flex;gap:7px;align-items:flex-end;border:1px solid #3a444b;border-radius:11px;background:#1d2326;padding:7px 8px}
+.d .ci-box textarea{flex:1;border:none;outline:none;background:transparent;resize:none;font-size:12px;line-height:1.6;min-height:20px;max-height:80px;font-family:inherit;color:#d5dde0}
+.d .btn{padding:5px 13px;border-radius:8px;font-size:12px;background:#e0a458;color:#1d2326;border:none;cursor:pointer;flex:none;font-weight:700}
+.d .meta{display:flex;gap:6px;font-size:10px;color:#7d8a90;padding-top:6px}
+</style>
+</head>
+<body>
+<h1>对话栏风格对比 · 4 款</h1>
+<div class="sub">同一份对话内容，四种视觉方案。看中哪个告诉我编号（A/B/C/D），我直接照它改。</div>
+<div class="row">
+
+<!-- ============ A 墨案原版 ============ -->
+<div class="case a">
+  <div class="case-hd"><span class="dot"></span><b>A · 墨案原版</b><span>当前样式</span></div>
+  <div class="bar">
+    <select><option>AI 提议</option><option>伏笔梳理</option></select>
+    <button class="icon-btn">✚</button><button class="icon-btn">✕</button>
+  </div>
+  <div class="scroll">
+    <div class="msg user"><span class="avatar">我</span><div class="bubble">你好，盘点一下这本书的家底</div></div>
+    <div class="msg ai">
+      <span class="avatar">墨</span>
+      <div class="bubble">
+        <div class="who"><b>墨案 · Agent</b><span class="tag">数据驱动</span></div>
+        <div class="think"><div class="think-hd">⋯ 思考过程</div><div class="think-body"><span>· 收到提问，识别意图：统计盘点</span><span>· 检索项目统计与章节数据</span><span>· 组装回答</span></div></div>
+        <div class="toolcard"><div class="tc-hd"><span class="tc-name">project_stats</span><span class="tc-state">✓ 完成</span></div><div class="tc-result">{"chapters":1,"words":2035,"chars":0,"fsp":0}</div></div>
+        你好！根据当前项目数据，这本书的家底如下：<br><br>章节：1 个章节　正文：2035 字<br>人物：0 个　伏笔：0 个（悬空 0 个）<br><br>目前只开了个头，尚未建立人物和伏笔。需要我帮你规划下一步吗？
+      </div>
+    </div>
+  </div>
+  <div class="chips"><button class="chip">续写下一章</button><button class="chip">梳理伏笔</button><button class="chip">诊断节奏</button><button class="chip">人物分析</button><button class="chip">卡文疏导</button><button class="chip">取名</button></div>
+  <div class="input">
+    <div class="ci-box"><textarea rows="1" placeholder="问点什么…（《无锋》）"></textarea><button class="btn">落笔</button></div>
+    <div class="meta"><span>Enter 发送</span><span>·</span><span>人物 0</span><span>·</span><span>章节 1/0</span></div>
+  </div>
+</div>
+
+<!-- ============ B 纸白清爽 ============ -->
+<div class="case b">
+  <div class="case-hd"><span class="dot"></span><b>B · 纸白清爽</b><span>浅色去噪点</span></div>
+  <div class="bar">
+    <select><option>AI 提议</option><option>伏笔梳理</option></select>
+    <button class="icon-btn">✚</button><button class="icon-btn">✕</button>
+  </div>
+  <div class="scroll">
+    <div class="msg user"><span class="avatar">我</span><div class="bubble">你好，盘点一下这本书的家底</div></div>
+    <div class="msg ai">
+      <span class="avatar">墨</span>
+      <div class="bubble">
+        <div class="who"><b>墨案 · Agent</b><span class="tag">数据驱动</span></div>
+        <div class="think"><div class="think-hd">思考过程</div><div class="think-body"><span>· 收到提问，识别意图：统计盘点</span><span>· 检索项目统计与章节数据</span><span>· 组装回答</span></div></div>
+        <div class="toolcard"><div class="tc-hd"><span class="tc-name">project_stats</span><span class="tc-state">✓ 完成</span></div><div class="tc-result">{"chapters":1,"words":2035,"chars":0,"fsp":0}</div></div>
+        你好！根据当前项目数据，这本书的家底如下：<br><br>章节：1 个章节　正文：2035 字<br>人物：0 个　伏笔：0 个（悬空 0 个）<br><br>目前只开了个头，尚未建立人物和伏笔。需要我帮你规划下一步吗？
+      </div>
+    </div>
+  </div>
+  <div class="chips"><button class="chip">续写下一章</button><button class="chip">梳理伏笔</button><button class="chip">诊断节奏</button><button class="chip">人物分析</button><button class="chip">卡文疏导</button><button class="chip">取名</button></div>
+  <div class="input">
+    <div class="ci-box"><textarea rows="1" placeholder="问点什么…（《无锋》）"></textarea><button class="btn">落笔</button></div>
+    <div class="meta"><span>Enter 发送</span><span>·</span><span>人物 0</span><span>·</span><span>章节 1/0</span></div>
+  </div>
+</div>
+
+<!-- ============ C 现代极简 ============ -->
+<div class="case c">
+  <div class="case-hd"><span class="dot"></span><b>C · 现代极简</b><span>黑白线条</span></div>
+  <div class="bar">
+    <select><option>AI 提议</option><option>伏笔梳理</option></select>
+    <button class="icon-btn">✚</button><button class="icon-btn">✕</button>
+  </div>
+  <div class="scroll">
+    <div class="msg user"><span class="avatar">我</span><div class="bubble">你好，盘点一下这本书的家底</div></div>
+    <div class="msg ai">
+      <span class="avatar">墨</span>
+      <div class="bubble">
+        <div class="who"><b>墨案 · Agent</b><span class="tag">数据驱动</span></div>
+        <div class="think"><div class="think-hd">思考过程</div><div class="think-body"><span>· 收到提问，识别意图：统计盘点</span><span>· 检索项目统计与章节数据</span><span>· 组装回答</span></div></div>
+        <div class="toolcard"><div class="tc-hd"><span class="tc-name">project_stats</span><span class="tc-state">✓ 完成</span></div><div class="tc-result">{"chapters":1,"words":2035,"chars":0,"fsp":0}</div></div>
+        你好！根据当前项目数据，这本书的家底如下：<br><br>章节：1 个章节　正文：2035 字<br>人物：0 个　伏笔：0 个（悬空 0 个）<br><br>目前只开了个头，尚未建立人物和伏笔。需要我帮你规划下一步吗？
+      </div>
+    </div>
+  </div>
+  <div class="chips"><button class="chip">续写下一章</button><button class="chip">梳理伏笔</button><button class="chip">诊断节奏</button><button class="chip">人物分析</button><button class="chip">卡文疏导</button><button class="chip">取名</button></div>
+  <div class="input">
+    <div class="ci-box"><textarea rows="1" placeholder="问点什么…（《无锋》）"></textarea><button class="btn">落笔</button></div>
+    <div class="meta"><span>Enter 发送</span><span>·</span><span>人物 0</span><span>·</span><span>章节 1/0</span></div>
+  </div>
+</div>
+
+<!-- ============ D 深色夜写 ============ -->
+<div class="case d">
+  <div class="case-hd"><span class="dot"></span><b>D · 深色夜写</b><span>护眼暗色</span></div>
+  <div class="bar">
+    <select><option>AI 提议</option><option>伏笔梳理</option></select>
+    <button class="icon-btn">✚</button><button class="icon-btn">✕</button>
+  </div>
+  <div class="scroll">
+    <div class="msg user"><span class="avatar">我</span><div class="bubble">你好，盘点一下这本书的家底</div></div>
+    <div class="msg ai">
+      <span class="avatar">墨</span>
+      <div class="bubble">
+        <div class="who"><b>墨案 · Agent</b><span class="tag">数据驱动</span></div>
+        <div class="think"><div class="think-hd">思考过程</div><div class="think-body"><span>· 收到提问，识别意图：统计盘点</span><span>· 检索项目统计与章节数据</span><span>· 组装回答</span></div></div>
+        <div class="toolcard"><div class="tc-hd"><span class="tc-name">project_stats</span><span class="tc-state">✓ 完成</span></div><div class="tc-result">{"chapters":1,"words":2035,"chars":0,"fsp":0}</div></div>
+        你好！根据当前项目数据，这本书的家底如下：<br><br>章节：1 个章节　正文：2035 字<br>人物：0 个　伏笔：0 个（悬空 0 个）<br><br>目前只开了个头，尚未建立人物和伏笔。需要我帮你规划下一步吗？
+      </div>
+    </div>
+  </div>
+  <div class="chips"><button class="chip">续写下一章</button><button class="chip">梳理伏笔</button><button class="chip">诊断节奏</button><button class="chip">人物分析</button><button class="chip">卡文疏导</button><button class="chip">取名</button></div>
+  <div class="input">
+    <div class="ci-box"><textarea rows="1" placeholder="问点什么…（《无锋》）"></textarea><button class="btn">落笔</button></div>
+    <div class="meta"><span>Enter 发送</span><span>·</span><span>人物 0</span><span>·</span><span>章节 1/0</span></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

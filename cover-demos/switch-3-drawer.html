@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>切换 demo 3 · 抽屉式（点按钮滑出列表）</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#f6f1e6;--card:#fbf8f0;--sub:#f0e8d6;--deep:#e9dfc8;--ink:#2f2a22;--ink2:#5c5548;--ink3:#8d8574;--line:#e3d9c4;--line2:#d3c7aa;--seal:#a8433a;--seal-soft:rgba(168,67,58,.09)}
+body{background:#ece7da;font-family:"Songti SC","STSong","Noto Serif SC","SimSun",serif;font-size:14px;color:var(--ink);display:flex;gap:40px;padding:40px;align-items:flex-start}
+.hint{font-size:13px;color:var(--ink3);line-height:2;font-family:"Kaiti SC","STKaiti","KaiTi",serif}
+.hint b{color:var(--seal)}
+.wrap{position:relative}
+#chat{width:400px;height:640px;background:var(--card);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 2px 4px rgba(47,42,34,.06),0 10px 30px rgba(47,42,34,.08)}
+#hd{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line)}
+#hd .menu-btn{width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink2);cursor:pointer;background:none;border:none}
+#hd .menu-btn:hover{background:var(--deep)}
+#hd .t{font-size:13px;font-weight:700;letter-spacing:.1em;color:var(--ink2);font-family:var(--kai)}
+#hd .cur{flex:1;min-width:0;font-size:12px;color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+/* ===== 核心：抽屉（覆盖层，从左滑出） ===== */
+#mask{position:absolute;inset:0;background:rgba(47,42,34,.32);z-index:20;opacity:0;pointer-events:none;transition:opacity .18s}
+#mask.show{opacity:1;pointer-events:auto}
+#drawer{position:absolute;top:0;bottom:0;left:0;width:min(78%,300px);background:var(--paper);border-right:1px solid var(--line);z-index:21;display:flex;flex-direction:column;transform:translateX(-102%);transition:transform .2s ease;box-shadow:4px 0 18px rgba(47,42,34,.12)}
+#drawer.show{transform:translateX(0)}
+#dr-hd{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink3);letter-spacing:.15em}
+#dr-hd .grow{flex:1}
+#dr-list{flex:1;overflow-y:auto;padding:6px 8px;display:flex;flex-direction:column;gap:2px}
+#dr-new{display:flex;align-items:center;gap:6px;padding:7px 10px;margin:0 8px 8px;border:1px dashed var(--line2);border-radius:8px;font-size:12px;color:var(--ink3);cursor:pointer;font-family:var(--kai)}
+#dr-new:hover{background:var(--sub);color:var(--ink)}
+/* 聊天区 */
+#scroll{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.msg{display:flex;gap:9px;align-items:flex-start}
+.msg.user{flex-direction:row-reverse}
+.av{width:28px;height:28px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;font-family:var(--kai);font-size:13px}
+.msg.user .av{background:var(--deep);color:var(--ink2)}
+.msg.ai .av{background:var(--seal);color:var(--card)}
+.bb{max-width:82%;padding:9px 12px;border-radius:11px;font-size:12.5px;line-height:1.8}
+.msg.user .bb{background:var(--sub);border:1px solid var(--line);border-top-right-radius:4px}
+.msg.ai .bb{background:var(--card);border:1px solid var(--line);border-top-left-radius:4px;flex:1;min-width:0}
+#input{flex:none;display:flex;gap:7px;align-items:flex-end;padding:10px 16px 14px;border-top:1px solid var(--line)}
+#input textarea{flex:1;border:1px solid var(--line2);border-radius:11px;background:var(--paper);padding:8px 10px;font-size:12.5px;resize:none;outline:none;font-family:inherit;line-height:1.6}
+#input button{padding:6px 14px;border-radius:8px;background:var(--ink);color:var(--paper);font-size:12.5px;border:none;cursor:pointer;flex:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="chat">
+    <div id="hd">
+      <button class="menu-btn" id="menuBtn" title="会话列表">☰</button>
+      <span class="t">Agent 对话</span>
+      <span class="cur" id="curT">AI 提议 · 家底盘点</span>
+    </div>
+    <!-- 聊天区（全高，不被吃掉） -->
+    <div id="scroll"></div>
+    <div id="input"><textarea rows="1" placeholder="问点什么…"></textarea><button>落笔</button></div>
+  </div>
+  <!-- 抽屉 -->
+  <div id="mask"></div>
+  <div id="drawer">
+    <div id="dr-hd"><span>会 话</span><span id="dr-cnt" style="font-family:monospace;color:var(--ink3)"></span><span class="grow"></span><button class="menu-btn" id="closeBtn" style="width:22px;height:22px">✕</button></div>
+    <div id="dr-list"></div>
+    <div id="dr-new">＋ 新建会话</div>
+  </div>
+</div>
+<div class="hint">
+  <b>方案 3 · 抽屉式</b><br>
+  聊天区始终全高，点左上角 ☰ 滑出会话列表。<br>
+  选中后抽屉收起，回到对话。<br><br>
+  优点：聊天区最大化，界面最干净，<br>
+  会话管理不常用时就收着。<br>
+  缺点：切换会话多一步点击。<br><br>
+  主流代表：移动端抽屉 / 部分桌面 IM。
+</div>
+<script>
+const S0 = [
+  { t: 'AI 提议 · 家底盘点', msgs: [['u','你好，盘点一下这本书的家底'],['a','这本书目前 1 章 / 2035 字，人物和伏笔都还是 0。需要我帮你规划下一步吗？']] },
+  { t: '伏笔梳理：千骨铁条', msgs: [['u','把千骨铁条的伏笔理一遍'],['a','「千骨」铁条已埋下：锈壳上的暗红字迹、伤口渗血吸收、灵气自掌心旧疤运转。悬空 0 个，回收 0 个。']] },
+  { t: '节奏诊断：第一章', msgs: [['u','诊断一下大纲节奏'],['a','第一章以「灵田劳作—被欺—铁条认主」推进，起势平稳，结尾以门外脚步声收束，钩子成立。整体节奏偏慢，建议第二章加快冲突。']] },
+]
+let idx = 0
+const mask = document.getElementById('mask')
+const drawer = document.getElementById('drawer')
+const drList = document.getElementById('dr-list')
+const scroll = document.getElementById('scroll')
+const curT = document.getElementById('curT')
+function open(){ mask.classList.add('show'); drawer.classList.add('show') }
+function close(){ mask.classList.remove('show'); drawer.classList.remove('show') }
+document.getElementById('menuBtn').onclick = open
+document.getElementById('closeBtn').onclick = close
+mask.onclick = close
+function renderList(){
+  drList.innerHTML = ''
+  document.getElementById('dr-cnt').textContent = S0.length + ' 个'
+  S0.forEach((s,i)=>{
+    const d = document.createElement('div')
+    d.className = 's-item' + (i===idx?' on':'')
+    d.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12.5px;color:#5c5548;' + (i===idx?'background:rgba(168,67,58,.09);color:#2f2a22;font-weight:600':'')
+    d.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.t}</span>`
+    d.onclick = ()=>{ idx=i; renderList(); renderMsgs(); close() }
+    drList.appendChild(d)
+  })
+}
+function renderMsgs(){
+  const s = S0[idx]
+  curT.textContent = s ? s.t : ''
+  const msgs = s ? (s.msgs || [['a','这是「'+s.t+'」会话。']]) : [['a','没有会话。点 ☰ 新建一个。']]
+  scroll.innerHTML = msgs.map(([r,t])=>`<div class="msg ${r}"><span class="av">${r==='u'?'我':'墨'}</span><div class="bb">${t}</div></div>`).join('')
+}
+document.getElementById('dr-new').onclick = ()=>{ S0.push({t:'新会话',msgs:[['a','新会话已就绪。问我续写、伏笔、节奏、人物。']]}); idx=S0.length-1; renderList(); renderMsgs(); close() }
+renderList(); renderMsgs()
+</script>
+</body>
+</html>

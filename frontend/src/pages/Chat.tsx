@@ -19,9 +19,9 @@ const CHIPS = [
   { q: '给未定名的角色取名', t: '取名' },
 ]
 
-export default function ChatPage({ project, stats, onChanged, initialSession, jumpSeq }: {
+export default function ChatPage({ project, stats, onChanged, initialSession, jumpSeq, chatW }: {
   project: Project; stats: Stats | null; onChanged?: () => void
-  initialSession?: number; jumpSeq?: number
+  initialSession?: number; jumpSeq?: number; chatW?: number | null
 }) {
   const [sessions, setSessions] = useState<Session[]>([])
   const [sid, setSid] = useState<number | null>(null)
@@ -33,6 +33,10 @@ export default function ChatPage({ project, stats, onChanged, initialSession, ju
   const abortRef = useRef<AbortController | null>(null)
   const sidRef = useRef<number | null>(null)
   sidRef.current = sid
+  /* 会话切换：宽屏（≥520px）浮出列表列，窄屏抽屉兜底（switch-3+4 结合） */
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [wide, setWide] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   /* 新建会话时消息由 send 注入，跳过 useEffect 的历史加载，避免空数组覆盖刚注入的消息 */
   const skipLoadRef = useRef(false)
 
@@ -63,6 +67,28 @@ export default function ChatPage({ project, stats, onChanged, initialSession, ju
   useEffect(() => {
     boxRef.current?.scrollTo({ top: boxRef.current.scrollHeight })
   }, [msgs])
+
+  /* 宽窄形态：由 App 的拖拽宽度驱动（ResizeObserver 在此环境不可靠），窗口尺寸变化兜底 */
+  useEffect(() => {
+    const el = panelRef.current
+    if (!el) return
+    const calc = () => setWide(el.offsetWidth >= 520)
+    calc()
+    window.addEventListener('resize', calc)
+    return () => window.removeEventListener('resize', calc)
+  }, [])
+
+  useEffect(() => {
+    if (chatW != null) setWide(chatW >= 520)
+  }, [chatW])
+
+  /* Esc 关闭抽屉 */
+  useEffect(() => {
+    if (!drawerOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawerOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [drawerOpen])
 
   /* 正文页「让 Agent 起草本章」把指令带入输入框（bus 滞留消费） */
   useEffect(() => on('ns:pending-chat', (text: string) => {
@@ -159,16 +185,34 @@ export default function ChatPage({ project, stats, onChanged, initialSession, ju
   const cur = sessions.find((s) => s.id === sid) || null
 
   return (
-    <div className="chat-panel">
-      {/* 会话切换条（紧凑单列，供左常驻面板使用） */}
-      <div className="cp-bar">
-        <select value={sid ?? ''} onChange={(e) => setSid(e.target.value === '' ? null : +e.target.value)}>
-          {sorted.length === 0 && <option value="">还没有会话</option>}
-          {sorted.map((s) => <option key={s.id} value={s.id}>{s.title || `会话 ${s.id}`}</option>)}
-        </select>
-        <button className="icon-btn" title="新建会话" onClick={() => newSession()}>✚</button>
-        {sid != null && <button className="icon-btn" title="删除当前会话" onClick={() => delSession(sid)}>✕</button>}
-      </div>
+    <div className="chat-panel" ref={panelRef}>
+      {/* 窄屏顶部条：当前会话 + 抽屉入口 */}
+      {!wide && (
+        <div className="cur-bar">
+          <button className="icon-btn" title="会话列表" onClick={() => setDrawerOpen(true)}>☰</button>
+          <b className="cur-t">{cur?.title || '未选择会话'}</b>
+          <button className="icon-btn" title="新建会话" onClick={() => newSession()}>✚</button>
+        </div>
+      )}
+
+      {/* 横向主体：宽屏左侧会话列表 + 右侧聊天区 */}
+      <div className="chat-body">
+        {wide && (
+          <div className="sess-col">
+            <button className="sess-new" onClick={() => newSession()}>＋ 新建会话</button>
+            <div className="sc-hd">会 话<span className="grow" />{sorted.length}</div>
+            <div className="sess-list">
+              {sorted.length === 0 && <div className="sc-empty">还没有会话</div>}
+              {sorted.map((s) => (
+                <div key={s.id} className={`sess-item${s.id === sid ? ' on' : ''}`}
+                  onClick={() => setSid(s.id)}>
+                  <span className="si-t">{s.title || `会话 ${s.id}`}</span>
+                  <span className="si-x" title="删除" onClick={(e) => { e.stopPropagation(); delSession(s.id) }}>✕</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       {/* ---------- 消息区 ---------- */}
       <div className="chat-wrap">
@@ -227,6 +271,28 @@ export default function ChatPage({ project, stats, onChanged, initialSession, ju
           </div>
         </div>
       </div>
+
+      {/* ---------- 窄屏抽屉：会话列表覆盖层 ---------- */}
+      {!wide && drawerOpen && (
+        <>
+          <div className="chat-mask" onClick={() => setDrawerOpen(false)} />
+          <div className="chat-drawer open">
+            <div className="dr-hd">会 话<span className="grow" />{sorted.length}<button className="icon-btn" title="关闭" onClick={() => setDrawerOpen(false)}>✕</button></div>
+            <button className="sess-new" onClick={() => { newSession(); setDrawerOpen(false) }}>＋ 新建会话</button>
+            <div className="sess-list">
+              {sorted.length === 0 && <div className="sc-empty">还没有会话</div>}
+              {sorted.map((s) => (
+                <div key={s.id} className={`sess-item${s.id === sid ? ' on' : ''}`}
+                  onClick={() => { setSid(s.id); setDrawerOpen(false) }}>
+                  <span className="si-t">{s.title || `会话 ${s.id}`}</span>
+                  <span className="si-x" title="删除" onClick={(e) => { e.stopPropagation(); delSession(s.id) }}>✕</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 

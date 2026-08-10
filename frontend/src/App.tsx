@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { api, GENRES, TONES, Project, Stats } from './api'
 import { Empty, Modal, Toast, ToastMsg } from './ui'
 import Palette from './Palette'
@@ -36,6 +36,7 @@ export default function App() {
   const [stage, setStage] = useState<'cover' | 'shelf' | 'work'>('cover')
   const [tab, setTab] = useState<TabId>('text')
   const [chatFold, setChatFold] = useState(false)
+  const [chatW, setChatW] = useState<number | null>(null) /* 对话栏宽度，null=走 CSS 默认/媒体查询 */
   const [stats, setStats] = useState<Stats | null>(null)
   const [showNew, setShowNew] = useState(false)
   const [delTarget, setDelTarget] = useState<Project | null>(null)
@@ -46,7 +47,29 @@ export default function App() {
 
   const bump = useCallback(() => setRefresh((r) => r + 1), [])
 
+  /* 拖拽对话栏右缘调整宽度（240~680px，松手持久化） */
+  const startResize = (e: ReactMouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const el = document.getElementById('colChat')
+    const startW = el?.offsetWidth ?? 400
+    const onMove = (ev: MouseEvent) => {
+      setChatW(Math.round(Math.min(680, Math.max(240, startW + (ev.clientX - startX)))))
+    }
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.classList.remove('resizing')
+      localStorage.setItem('ns.chatW', String(el?.offsetWidth ?? startW))
+    }
+    document.body.classList.add('resizing')
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
   useEffect(() => {
+    const saved = Number(localStorage.getItem('ns.chatW'))
+    if (saved >= 240 && saved <= 680) setChatW(saved)
     api.get<Project[]>('/projects').then((ps) => {
       setProjects(ps)
       setActiveId((cur) => cur ?? ps[0]?.id ?? null)
@@ -155,22 +178,26 @@ export default function App() {
           <>
             {/* ---------- 左常驻 Agent 对话（可折叠） ---------- */}
             {chatFold ? (
-              <button id="chat-unfold" title="展开 Agent 对话" onClick={() => setChatFold(false)}>Agent 对话</button>
+              <button id="chat-unfold" title="展开 Agent 对话" onClick={() => setChatFold(false)}>
+                <span className="v">Agent 对话</span>
+                <span className="arr">»</span>
+              </button>
             ) : (
-              <aside id="colChat">
+              <aside id="colChat" style={chatW ? { width: chatW } : undefined}>
                 <div className="chat-hd">
                   <span className="ch-t">Agent 对话</span>
                   <span className="grow" />
-                  <button className="icon-btn" title="收起对话面板" onClick={() => setChatFold(true)}>»</button>
+                  <button className="icon-btn" title="收起对话面板" onClick={() => setChatFold(true)}>«</button>
                 </div>
                 {active ? (
-                  <ChatPage project={active} stats={stats} onChanged={bump} initialSession={jump.ses} jumpSeq={jump.n} />
+                  <ChatPage project={active} stats={stats} onChanged={bump} initialSession={jump.ses} jumpSeq={jump.n} chatW={chatW} />
                 ) : (
                   <Empty text="先在左侧开一本书" sub="Agent 需要一部作品来围绕。"
                     actionText="去书架" onAction={() => setStage('shelf')} />
                 )}
               </aside>
             )}
+            {!chatFold && <div id="chat-resizer" title="拖拽调整对话栏宽度" onMouseDown={startResize} />}
             {/* ---------- 右内容区 ---------- */}
             <main id="colMain">
               {!active ? (

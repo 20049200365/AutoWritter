@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>对话栏收起形态 · 4 款</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#f6f1e6;--card:#fbf8f0;--sub:#f0e8d6;--deep:#e9dfc8;--ink:#2f2a22;--ink2:#5c5548;--ink3:#8d8574;--line:#e3d9c4;--line2:#d3c7aa;--seal:#a8433a;--seal-soft:rgba(168,67,58,.09)}
+body{background:#ece7da;font-family:"Songti SC","STSong","Noto Serif SC","SimSun",serif;font-size:14px;color:var(--ink);padding:28px 32px;min-height:100vh}
+h1{font-size:20px;margin-bottom:6px;letter-spacing:.1em}
+.sub{font-size:12.5px;color:var(--ink3);margin-bottom:20px;font-family:"Kaiti SC","STKaiti","KaiTi",serif}
+.row{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.case{flex:1;min-width:280px;max-width:340px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 4px rgba(47,42,34,.06),0 10px 30px rgba(47,42,34,.08)}
+.case-hd{padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #eee;background:#fff}
+.case-hd b{font-size:13px}
+.case-hd span{font-size:11px;color:#999;font-family:"Kaiti SC","STKaiti","KaiTi",serif}
+.case-hd .dot{width:8px;height:8px;border-radius:50%}
+/* 舞台：模拟对话栏区域 */
+.stage{height:520px;background:var(--paper);display:flex;overflow:hidden}
+/* ===== 展开态（所有方案共用简化对话栏） ===== */
+.chat{flex:1;display:flex;flex-direction:column;background:var(--card);min-width:0}
+.chat-hd{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line)}
+.chat-hd .t{font-size:13px;font-weight:700;letter-spacing:.1em;color:var(--ink2);font-family:var(--kai)}
+.chat-hd .grow{flex:1}
+.chat-hd button{width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink3);background:none;border:none;cursor:pointer}
+.chat-hd button:hover{background:var(--deep);color:var(--ink)}
+.chat-body{flex:1;display:flex;min-height:0}
+.sess-col{flex:none;width:150px;background:var(--paper);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:8px 6px;gap:4px}
+.sess-col .n{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px dashed var(--line2);border-radius:7px;font-size:11.5px;color:var(--ink3);font-family:var(--kai);justify-content:center;margin-bottom:4px}
+.sess-col .it{padding:6px 8px;border-radius:6px;font-size:12px;color:var(--ink2)}
+.sess-col .it.on{background:var(--seal-soft);color:var(--ink);font-weight:600}
+.msg{flex:1;padding:14px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.msg .b{max-width:80%;padding:8px 11px;border-radius:11px;font-size:12px;line-height:1.8;background:var(--card);border:1px solid var(--line)}
+.msg .u{align-self:flex-end;background:var(--sub)}
+/* ===== A 竖排文字条 ===== */
+.a .fold-a{flex:none;width:30px;background:var(--card);border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:14px 0;cursor:pointer;transition:background .15s}
+.a .fold-a:hover{background:var(--sub)}
+.a .fold-a .v{writing-mode:vertical-rl;font-family:var(--kai);font-size:12px;letter-spacing:.4em;color:var(--ink2);text-indent:.4em}
+.a .fold-a .arr{font-size:12px;color:var(--ink3)}
+/* ===== B 图标窄条 ===== */
+.b .fold-b{flex:none;width:20px;background:var(--card);border-left:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}
+.b .fold-b:hover{background:var(--seal-soft)}
+.b .fold-b .arr{font-size:11px;color:var(--ink3);transition:color .15s}
+.b .fold-b:hover .arr{color:var(--seal)}
+/* ===== C 顶部横条 ===== */
+.c .fold-c{flex:none;height:38px;background:var(--card);border-left:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:background .15s}
+.c .fold-c:hover{background:var(--sub)}
+.c .fold-c .t{font-family:var(--kai);font-size:12px;letter-spacing:.3em;color:var(--ink2)}
+.c .fold-c .arr{font-size:11px;color:var(--ink3)}
+/* ===== D 书脊标签 ===== */
+.d .fold-d{flex:none;width:26px;background:var(--card);border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:16px 0;cursor:pointer;transition:background .15s}
+.d .fold-d:hover{background:var(--sub)}
+.d .fold-d .v{writing-mode:vertical-rl;font-family:var(--kai);font-size:11px;letter-spacing:.5em;color:var(--ink2);text-indent:.5em}
+.d .fold-d .arr{font-size:11px;color:var(--ink3)}
+</style>
+</head>
+<body>
+<h1>对话栏「收起后」形态 · 4 款</h1>
+<div class="sub">每个都可以点：点对话栏右上角「«」收起 → 点收起条展开。看中哪个告诉我编号。</div>
+<div class="row">
+
+<!-- ===== A 竖排文字条 ===== -->
+<div class="case a">
+  <div class="case-hd"><span class="dot" style="background:#a8433a"></span><b>A · 竖排文字条</b><span>现状精致版</span></div>
+  <div class="stage" id="stageA">
+    <div class="chat">
+      <div class="chat-hd"><span class="t">Agent 对话</span><span class="grow"></span><button class="foldBtn" title="收起">«</button></div>
+      <div class="chat-body">
+        <div class="sess-col"><div class="n">＋ 新建会话</div><div class="it on">AI 提议 · 家底盘点</div><div class="it">伏笔梳理</div><div class="it">节奏诊断</div></div>
+        <div class="msg"><div class="b">你好，盘点一下这本书的家底</div><div class="b u">这本书目前 1 章 / 2035 字。</div></div>
+      </div>
+    </div>
+    <div class="fold-a" style="display:none"><span class="v">Agent 对话</span><span class="arr">»</span></div>
+  </div>
+</div>
+
+<!-- ===== B 图标窄条 ===== -->
+<div class="case b">
+  <div class="case-hd"><span class="dot" style="background:#40635c"></span><b>B · 图标窄条</b><span>极简箭头</span></div>
+  <div class="stage" id="stageB">
+    <div class="chat">
+      <div class="chat-hd"><span class="t">Agent 对话</span><span class="grow"></span><button class="foldBtn" title="收起">«</button></div>
+      <div class="chat-body">
+        <div class="sess-col"><div class="n">＋ 新建会话</div><div class="it on">AI 提议 · 家底盘点</div><div class="it">伏笔梳理</div><div class="it">节奏诊断</div></div>
+        <div class="msg"><div class="b">你好，盘点一下这本书的家底</div><div class="b u">这本书目前 1 章 / 2035 字。</div></div>
+      </div>
+    </div>
+    <div class="fold-b" style="display:none"><span class="arr">»</span></div>
+  </div>
+</div>
+
+<!-- ===== C 顶部横条 ===== -->
+<div class="case c">
+  <div class="case-hd"><span class="dot" style="background:#b98a45"></span><b>C · 顶部横条</b><span>占一行</span></div>
+  <div class="stage" id="stageC">
+    <div class="chat">
+      <div class="chat-hd"><span class="t">Agent 对话</span><span class="grow"></span><button class="foldBtn" title="收起">«</button></div>
+      <div class="chat-body">
+        <div class="sess-col"><div class="n">＋ 新建会话</div><div class="it on">AI 提议 · 家底盘点</div><div class="it">伏笔梳理</div><div class="it">节奏诊断</div></div>
+        <div class="msg"><div class="b">你好，盘点一下这本书的家底</div><div class="b u">这本书目前 1 章 / 2035 字。</div></div>
+      </div>
+    </div>
+    <div class="fold-c" style="display:none"><span class="t">Agent</span><span class="arr">»</span></div>
+  </div>
+</div>
+
+<!-- ===== D 书脊标签 ===== -->
+<div class="case d">
+  <div class="case-hd"><span class="dot" style="background:#6f8f62"></span><b>D · 书脊窄条</b><span>两字+箭头</span></div>
+  <div class="stage" id="stageD">
+    <div class="chat">
+      <div class="chat-hd"><span class="t">Agent 对话</span><span class="grow"></span><button class="foldBtn" title="收起">«</button></div>
+      <div class="chat-body">
+        <div class="sess-col"><div class="n">＋ 新建会话</div><div class="it on">AI 提议 · 家底盘点</div><div class="it">伏笔梳理</div><div class="it">节奏诊断</div></div>
+        <div class="msg"><div class="b">你好，盘点一下这本书的家底</div><div class="b u">这本书目前 1 章 / 2035 字。</div></div>
+      </div>
+    </div>
+    <div class="fold-d" style="display:none"><span class="v">对话</span><span class="arr">»</span></div>
+  </div>
+</div>
+
+</div>
+<script>
+document.querySelectorAll('.case').forEach(cs => {
+  const chat = cs.querySelector('.chat')
+  const fold = cs.querySelector('.fold-a, .fold-b, .fold-c, .fold-d')
+  cs.querySelector('.foldBtn').onclick = () => { chat.style.display = 'none'; fold.style.display = 'flex' }
+  fold.onclick = () => { fold.style.display = 'none'; chat.style.display = 'flex' }
+})
+</script>
+</body>
+</html>

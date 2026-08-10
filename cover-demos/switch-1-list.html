@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>切换 demo 1 · 列表式（常驻会话列表）</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#f6f1e6;--card:#fbf8f0;--sub:#f0e8d6;--deep:#e9dfc8;--ink:#2f2a22;--ink2:#5c5548;--ink3:#8d8574;--line:#e3d9c4;--line2:#d3c7aa;--seal:#a8433a;--seal-soft:rgba(168,67,58,.09)}
+body{background:#ece7da;font-family:"Songti SC","STSong","Noto Serif SC","SimSun",serif;font-size:14px;color:var(--ink);display:flex;gap:40px;padding:40px;align-items:flex-start}
+.hint{font-size:13px;color:var(--ink3);line-height:2;font-family:"Kaiti SC","STKaiti","KaiTi",serif}
+.hint b{color:var(--seal)}
+/* 对话栏容器：400px 模拟真实宽度 */
+#chat{width:400px;height:640px;background:var(--card);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 2px 4px rgba(47,42,34,.06),0 10px 30px rgba(47,42,34,.08)}
+#hd{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line)}
+#hd .t{font-size:13px;font-weight:700;letter-spacing:.1em;color:var(--ink2);font-family:var(--kai)}
+#hd .grow{flex:1}
+/* ===== 核心：常驻会话列表（顶部区块） ===== */
+#sess{flex:none;max-height:38%;display:flex;flex-direction:column;border-bottom:1px solid var(--line);background:var(--paper)}
+#sess-hd{display:flex;align-items:center;gap:6px;padding:7px 10px 5px;font-size:11px;color:var(--ink3);letter-spacing:.15em}
+#sess-hd .grow{flex:1}
+#sess-list{overflow-y:auto;padding:2px 8px 8px;display:flex;flex-direction:column;gap:2px}
+.s-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--ink2)}
+.s-item:hover{background:var(--deep)}
+.s-item.on{background:var(--seal-soft);color:var(--ink);font-weight:600}
+.s-item .s-t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.s-item .s-time{font-size:10px;color:var(--ink3);flex:none}
+.s-item .s-del{flex:none;width:18px;height:18px;border-radius:5px;display:none;align-items:center;justify-content:center;font-size:11px;color:var(--ink3)}
+.s-item:hover .s-del{display:inline-flex}
+.s-item .s-del:hover{background:var(--line2);color:var(--ink)}
+#sess-new{display:flex;align-items:center;gap:6px;padding:6px 10px;margin:0 8px 8px;border:1px dashed var(--line2);border-radius:8px;font-size:12px;color:var(--ink3);cursor:pointer;font-family:var(--kai)}
+#sess-new:hover{background:var(--sub);color:var(--ink)}
+/* 聊天区 */
+#scroll{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.msg{display:flex;gap:9px;align-items:flex-start}
+.msg.user{flex-direction:row-reverse}
+.av{width:28px;height:28px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;font-family:var(--kai);font-size:13px}
+.msg.user .av{background:var(--deep);color:var(--ink2)}
+.msg.ai .av{background:var(--seal);color:var(--card)}
+.bb{max-width:82%;padding:9px 12px;border-radius:11px;font-size:12.5px;line-height:1.8}
+.msg.user .bb{background:var(--sub);border:1px solid var(--line);border-top-right-radius:4px}
+.msg.ai .bb{background:var(--card);border:1px solid var(--line);border-top-left-radius:4px;flex:1;min-width:0}
+#input{flex:none;display:flex;gap:7px;align-items:flex-end;padding:10px 16px 14px;border-top:1px solid var(--line)}
+#input textarea{flex:1;border:1px solid var(--line2);border-radius:11px;background:var(--paper);padding:8px 10px;font-size:12.5px;resize:none;outline:none;font-family:inherit;line-height:1.6}
+#input button{padding:6px 14px;border-radius:8px;background:var(--ink);color:var(--paper);font-size:12.5px;border:none;cursor:pointer;flex:none}
+</style>
+</head>
+<body>
+<div id="chat">
+  <div id="hd"><span class="t">Agent 对话</span><span class="grow"></span><span style="font-size:11px;color:var(--ink3)">会话列表常驻</span></div>
+  <!-- 常驻会话列表 -->
+  <div id="sess">
+    <div id="sess-hd"><span>会 话</span><span class="grow"></span><span id="sess-cnt" style="font-family:monospace"></span></div>
+    <div id="sess-list"></div>
+    <div id="sess-new">＋ 新建会话</div>
+  </div>
+  <!-- 聊天区 -->
+  <div id="scroll"></div>
+  <div id="input"><textarea rows="1" placeholder="问点什么…"></textarea><button>落笔</button></div>
+</div>
+<div class="hint">
+  <b>方案 1 · 列表式</b><br>
+  会话列表常驻对话栏顶部区块，可滚动。<br>
+  点击切换 · 悬停可删除 · 底部新建。<br><br>
+  优点：一眼看到全部会话，可扫视、可管理。<br>
+  缺点：吃掉约 1/3 聊天区高度。<br><br>
+  主流代表：微信 / ChatGPT 侧栏的逻辑。
+</div>
+<script>
+const S0 = [
+  { t: 'AI 提议 · 家底盘点', time: '10:12' },
+  { t: '伏笔梳理：千骨铁条', time: '09:4 0'.replace(' ','') },
+  { t: '节奏诊断：第一章', time: '昨天' },
+]
+const MSGS = {
+  'AI 提议 · 家底盘点': [['u','你好，盘点一下这本书的家底'],['a','这本书目前 1 章 / 2035 字，人物和伏笔都还是 0。需要我帮你规划下一步吗？']],
+  '伏笔梳理：千骨铁条': [['u','把千骨铁条的伏笔理一遍'],['a','「千骨」铁条已埋下：锈壳上的暗红字迹、伤口渗血吸收、灵气自掌心旧疤运转。悬空 0 个，回收 0 个。']],
+  '节奏诊断：第一章': [['u','诊断一下大纲节奏'],['a','第一章以「灵田劳作—被欺—铁条认主」推进，起势平稳，结尾以门外脚步声收束，钩子成立。整体节奏偏慢，建议第二章加快冲突。']],
+}
+let idx = 0
+const list = document.getElementById('sess-list')
+const scroll = document.getElementById('scroll')
+function renderList(){
+  list.innerHTML = ''
+  document.getElementById('sess-cnt').textContent = S0.length + ' 个'
+  S0.forEach((s,i)=>{
+    const d = document.createElement('div')
+    d.className = 's-item' + (i===idx?' on':'')
+    d.innerHTML = `<span class="s-t">${s.t}</span><span class="s-time">${s.time}</span><span class="s-del" title="删除">✕</span>`
+    d.onclick = (e)=>{ if(e.target.classList.contains('s-del')) return; idx=i; renderList(); renderMsgs() }
+    d.querySelector('.s-del').onclick = (e)=>{ e.stopPropagation(); S0.splice(i,1); if(idx>=S0.length) idx=S0.length-1; if(idx<0){idx=0;S0.push({t:'新会话',time:'现在'})} renderList(); renderMsgs() }
+    list.appendChild(d)
+  })
+}
+function renderMsgs(){
+  const msgs = MSGS[S0[idx].t] || [['a','这是「'+S0[idx].t+'」会话。问我续写、伏笔、节奏、人物，回答全部来自本书此刻的真实数据。']]
+  scroll.innerHTML = msgs.map(([r,t])=>`<div class="msg ${r}"><span class="av">${r==='u'?'我':'墨'}</span><div class="bb">${t}</div></div>`).join('')
+}
+document.getElementById('sess-new').onclick = ()=>{ S0.unshift({t:'新会话',time:'现在'}); idx=0; renderList(); renderMsgs() }
+renderList(); renderMsgs()
+</script>
+</body>
+</html>
