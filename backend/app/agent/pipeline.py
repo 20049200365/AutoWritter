@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from collections.abc import AsyncIterator
 
 from ..data.db import UnitOfWork
@@ -238,11 +239,14 @@ class ChapterPipeline:
             else:
                 raise StateConflict(f"非法决策: {decision}")
             uow.session.flush()
-        # 偏好学习：接受/驳回均记录事件（M5，事务外，不阻塞决策）
+        # 偏好学习：接受/驳回均记录事件（M5）——蒸馏会同步调 LLM，放后台线程避免阻塞决策响应
         if self.preference_service is not None:
-            self.preference_service.record_decision(
-                pid, "accept" if decision == "accept" else "reject",
-                tags, note, task_id=task_id)
+            threading.Thread(
+                target=self.preference_service.record_decision,
+                args=(pid, "accept" if decision == "accept" else "reject",
+                      tags, note, task_id),
+                daemon=True,
+            ).start()
         with UnitOfWork(self.factory) as uow:
             task = self._task(uow, task_id)
             return {"task_id": task_id, "decision": task.decision, "status": task.status}

@@ -87,16 +87,17 @@ export default function GeneratePage({ project, onChanged }: {
   async function decide(decision: 'accept' | 'reject') {
     if (taskId == null) return
     if (decision === 'reject' && !rejecting) { setRejecting(true); return }
-    await api.post(`/tasks/${taskId}/decide`, {
-      decision, tags: decision === 'reject' ? tags : null,
-      note: decision === 'reject' ? (note || null) : null,
-    })
-    setRejecting(false)
-    onChanged()
-    if (decision === 'accept') {
-      setStage('已接受')
-    } else {
-      setStage('已驳回')
+    try {
+      await api.post(`/tasks/${taskId}/decide`, {
+        decision, tags: decision === 'reject' ? tags : null,
+        note: decision === 'reject' ? (note || null) : null,
+      })
+      setRejecting(false)
+      onChanged()
+      setStage(decision === 'accept' ? '已接受' : '已驳回')
+    } catch (e: any) {
+      setRejecting(false)
+      setError(`决策失败：${e?.message || '请重试'}`)
     }
   }
 

@@ -49,23 +49,28 @@ export async function* sseStream(path: string, body?: unknown, signal?: AbortSig
   const reader = res.body.getReader()
   const decoder = new TextDecoder('utf-8')
   let buf = ''
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buf += decoder.decode(value, { stream: true })
-    let idx: number
-    while ((idx = buf.indexOf('\n\n')) >= 0) {
-      const block = buf.slice(0, idx)
-      buf = buf.slice(idx + 2)
-      const ev: Partial<SseEvent> = {}
-      for (const line of block.split('\n')) {
-        if (line.startsWith('event: ')) ev.event = line.slice(7)
-        else if (line.startsWith('data: ')) {
-          try { ev.data = JSON.parse(line.slice(6)) } catch { ev.data = line.slice(6) }
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buf += decoder.decode(value, { stream: true })
+      let idx: number
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const block = buf.slice(0, idx)
+        buf = buf.slice(idx + 2)
+        const ev: Partial<SseEvent> = {}
+        for (const line of block.split('\n')) {
+          if (line.startsWith('event: ')) ev.event = line.slice(7)
+          else if (line.startsWith('data: ')) {
+            try { ev.data = JSON.parse(line.slice(6)) } catch { ev.data = line.slice(6) }
+          }
         }
+        if (ev.event) yield ev as SseEvent
       }
-      if (ev.event) yield ev as SseEvent
     }
+  } finally {
+    /* 调用方 break 提前退出时也释放连接，避免悬挂占用连接池（decide 等后续请求 pending） */
+    reader.cancel().catch(() => {})
   }
 }
 
